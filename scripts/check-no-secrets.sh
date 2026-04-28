@@ -4,7 +4,7 @@ if find . -name .env -not -path './.git/*' | grep -q .; then
   echo "Do not commit .env files"
   exit 1
 fi
-if grep -R "BEGIN RSA PRIVATE KEY\|AWS_SECRET_ACCESS_KEY\|password *= *['\"][^'\"]" --exclude-dir=.git --exclude=check-no-secrets.sh .; then
+if grep -R "BEGIN RSA PRIVATE KEY\|AWS_SECRET_ACCESS_KEY\|password *= *['\"][^'\"]" --exclude-dir=.git --exclude-dir=node_modules --exclude=check-no-secrets.sh .; then
   echo "Potential secret found"
   exit 1
 fi

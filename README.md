@@ -86,7 +86,11 @@ docs/                 documentación TFM y operación
 scripts/              scripts de operación y validación
 tests/                tests básicos
 data/studies/         almacenamiento local ignorado por Git
+.claude/              comandos y skills para Claude
+.opencode/            comandos y agentes para OpenCode
 ```
+
+Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué sirve y cómo está organizado su código o contenido.
 
 ## Limitaciones Iniciales
 
