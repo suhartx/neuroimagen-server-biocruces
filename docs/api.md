@@ -16,3 +16,17 @@ Swagger está disponible en `/api/docs`.
 - `400`: extensión no permitida.
 - `404`: estudio o PDF no encontrado.
 - `413`: fichero demasiado grande.
+
+## Extensiones Permitidas
+
+La subida acepta las extensiones configuradas en `ALLOWED_EXTENSIONS`:
+
+- `.nii`
+- `.nii.gz`
+- `.dcm`
+- `.zip`
+- `.tar`
+- `.tar.gz`
+- `.gz`
+- `.json`
+- `.txt`

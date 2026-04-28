@@ -11,6 +11,10 @@
 - Logs técnicos separados de mensajes de usuario.
 - Sin datos identificativos de pacientes en fixtures.
 
+Extensiones aceptadas por defecto: `.nii`, `.nii.gz`, `.dcm`, `.zip`, `.tar`, `.tar.gz`, `.gz`, `.json` y `.txt`.
+
+La lista se configura mediante `ALLOWED_EXTENSIONS` y debe mantenerse alineada con `backend/app/core/config.py` y `docker-compose.yml`.
+
 ## Supuestos
 
 - Uso inicial con datos anonimizados.

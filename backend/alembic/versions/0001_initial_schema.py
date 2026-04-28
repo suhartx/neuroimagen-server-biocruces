@@ -6,6 +6,7 @@ Create Date: 2026-04-28
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision = "0001_initial_schema"
 down_revision = None
@@ -14,7 +15,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    status_enum = sa.Enum("uploaded", "queued", "processing", "completed", "failed", name="studystatus")
+    status_enum = postgresql.ENUM(
+        "uploaded",
+        "queued",
+        "processing",
+        "completed",
+        "failed",
+        name="studystatus",
+        create_type=False,
+    )
     status_enum.create(op.get_bind(), checkfirst=True)
     op.create_table(
         "studies",
