@@ -1,0 +1,21 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: detect-private-key
+  - repo: local
+    hooks:
+      - id: no-env-files
+        name: Block .env files
+        entry: sh -c 'if git diff --cached --name-only | grep -E "(^|/)\.env$"; then echo "Do not commit .env"; exit 1; fi'
+        language: system
+        pass_filenames: false
+      - id: docs-exist
+        name: Validate required docs
+        entry: ./scripts/check-docs.sh
+        language: system
+        pass_filenames: false
