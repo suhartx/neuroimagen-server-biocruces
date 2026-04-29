@@ -1,20 +1,18 @@
-# OpenCode Assistant Config
+# OpenCode Config
 
-Esta carpeta contiene comandos y agentes documentados para desarrollo asistido con OpenCode.
+Configuración mínima para trabajar con OpenCode + GPT-5.5 en este repositorio.
 
-## Responsabilidad
+## Estructura
 
-- Definir comandos reutilizables para tareas frecuentes.
-- Definir agentes por rol: arquitectura, backend, frontend, DevOps, documentación, QA y seguridad.
-- Mantener las reglas del repositorio disponibles para asistentes IA.
+- `agents/`: subagentes especializados y con permisos defensivos.
+- `skills/`: instrucciones reutilizables bajo demanda.
+- `commands/`: rutinas repetibles de auditoría, handoff y review.
+- `plugins/`: protecciones locales simples.
 
-## Estructura Del Código
+## Fuente De Verdad
 
-- `commands/`: guías para planificar features, revisar arquitectura, implementar endpoints, actualizar docs y preparar releases.
-- `agents/`: descripciones de responsabilidades por agente.
+`AGENTS.md` contiene las reglas generales del proyecto. Esta carpeta solo define herramientas OpenCode; no sustituye la arquitectura ni la documentación del TFM.
 
 ## Importante
 
-Esta carpeta no forma parte del runtime Docker. No interviene en la API, worker, frontend ni procesamiento clínico.
-
-Si tu herramienta genera cachés o dependencias internas dentro de `.opencode`, no deben commitearse.
+Esta carpeta no forma parte del runtime Docker. Si OpenCode genera `node_modules`, `package.json`, `package-lock.json` o `bun.lock` dentro de `.opencode/`, no deben commitearse.

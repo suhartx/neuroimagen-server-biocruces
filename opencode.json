@@ -1,0 +1,73 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "openai/gpt-5.5",
+  "instructions": ["AGENTS.md"],
+  "share": "manual",
+  "autoupdate": "notify",
+  "watcher": {
+    "ignore": [
+      ".git/**",
+      "**/__pycache__/**",
+      "**/.pytest_cache/**",
+      "**/.ruff_cache/**",
+      "**/node_modules/**",
+      "**/dist/**",
+      "data/studies/**",
+      ".opencode/node_modules/**"
+    ]
+  },
+  "permission": {
+    "read": {
+      "*": "allow",
+      ".env": "deny",
+      ".env.*": "deny",
+      "**/.env": "deny",
+      "**/.env.*": "deny",
+      "**/credentials.json": "deny",
+      "**/credentials/**": "deny",
+      "**/secret/**": "deny",
+      "**/secrets/**": "deny",
+      "**/*.pem": "deny",
+      "**/*.key": "deny",
+      "**/*.p12": "deny",
+      "**/*.pfx": "deny"
+    },
+    "edit": "ask",
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "make test": "allow",
+      "make lint": "allow",
+      "make check-docs": "allow",
+      "make check-secrets": "allow",
+      "python -m json.tool *": "allow",
+      "opencode --version": "allow",
+      "opencode models*": "allow",
+      "git push*": "deny",
+      "rm -rf*": "deny",
+      "docker *prune*": "deny",
+      "docker compose down -v*": "deny",
+      "make clean": "ask",
+      "make migrate": "ask",
+      "*deploy*": "deny"
+    },
+    "external_directory": "ask",
+    "skill": {
+      "*": "allow"
+    }
+  },
+  "agent": {
+    "build": {
+      "model": "openai/gpt-5.5",
+      "reasoningEffort": "medium",
+      "textVerbosity": "low"
+    },
+    "plan": {
+      "model": "openai/gpt-5.5",
+      "reasoningEffort": "high",
+      "textVerbosity": "low"
+    }
+  }
+}

@@ -29,6 +29,7 @@ Esta carpeta contiene la documentación técnica, operativa y de defensa del TFM
 - `troubleshooting.md`: incidencias habituales.
 - `next-tasks.md`: tareas pendientes próximas y mejoras de desarrollo.
 - `tfm-technical-summary.md`: resumen técnico para el TFM.
+- `agentic-workflow-audit.md`: auditoría y decisiones de configuración OpenCode/agentes.
 
 ## Regla De Mantenimiento
 
