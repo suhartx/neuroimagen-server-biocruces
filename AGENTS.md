@@ -16,6 +16,14 @@ Repositorio TFM para integración de procesamiento asíncrono de neuroimagen. El
 - Actualizar tests y docs junto con cambios funcionales.
 - Usar Conventional Commits.
 
+## Workflow GitHub
+
+- Mantener la rama local de trabajo en `develop` para disponer de agentes, skills y documentación IA.
+- Cuando el usuario pida subir o pushear a GitHub sin especificar rama, subir automáticamente a ambas ramas.
+- `develop` debe conservar todo el contenido del proyecto, incluyendo `.claude/`, `.opencode/`, `AGENTS.md` y documentación/configuración IA.
+- `main` debe mantenerse limpio, sin `.claude/`, `.opencode/`, `AGENTS.md` ni `docs/ai-development-rules.md`.
+- Si el usuario pide explícitamente una sola rama, respetar esa rama.
+
 ## Checks Recomendados
 
 ```bash
