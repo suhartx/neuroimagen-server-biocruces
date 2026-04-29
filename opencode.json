@@ -45,7 +45,7 @@
       "python -m json.tool *": "allow",
       "opencode --version": "allow",
       "opencode models*": "allow",
-      "git push*": "deny",
+      "git push*": "ask",
       "rm -rf*": "deny",
       "docker *prune*": "deny",
       "docker compose down -v*": "deny",

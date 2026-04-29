@@ -16,8 +16,19 @@ Esta carpeta contiene la GUI web sencilla en castellano. Está implementada con 
 - `src/styles.css`: define el estilo visual de la interfaz.
 - `index.html`: punto de entrada HTML de Vite.
 - `package.json`: scripts y dependencias frontend.
+- `package-lock.json`: versiones resueltas de dependencias frontend para instalaciones reproducibles.
+- `eslint.config.js`: configuración de lint compatible con ESLint 9.
 - `Dockerfile`: compila el frontend y lo sirve con Nginx.
 - `nginx.conf`: configuración mínima para servir la SPA.
+
+## Desarrollo Y Validación
+
+```bash
+npm install
+npm run lint
+```
+
+`src/main.jsx` concentra los componentes actuales de la GUI (`App` y `Status`). Si la interfaz crece, separar componentes solo cuando mejore claramente la legibilidad o reutilización.
 
 ## Flujo En La UI
 

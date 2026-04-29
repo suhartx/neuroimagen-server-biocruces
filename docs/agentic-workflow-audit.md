@@ -35,6 +35,7 @@ Fecha: 2026-04-29
 - Se reducen comandos a tres rutinas repetibles: auditoría, handoff y review de diff.
 - Se crean tres skills bajo demanda: orientación, cambio seguro y sincronización documental.
 - Se añade un plugin local simple para bloquear lecturas accidentales de secretos.
+- Se permite `git push` bajo confirmación explícita (`ask`) para ejecutar el flujo acordado de subida a `develop` y `main` sin desactivar las protecciones restantes.
 
 ## Archivos Creados O Modificados
 
@@ -78,6 +79,7 @@ Fecha: 2026-04-29
 ## Hooks / Plugins
 
 - `secret-protection.js`: bloquea lecturas de `.env`, credenciales, secretos y claves/certificados comunes.
+- `opencode.json`: mantiene `git push*` en modo `ask`; no se permite push implícito ni force push sin autorización expresa.
 
 ## No Creado
 
@@ -89,4 +91,5 @@ Fecha: 2026-04-29
 
 - Confirmar con `opencode models` que `openai/gpt-5.5` está disponible con las credenciales locales.
 - Revisar en uso real que los patrones de permisos de OpenCode bloquean todos los comandos sensibles esperados.
+- Tras cada subida a `main`, comprobar que no existan `.claude/`, `.opencode/`, `AGENTS.md`, `CLAUDE.md`, `opencode.json`, `docs/ai-development-rules.md` ni documentación agentic.
 - `.opencode/node_modules/` permanece localmente; no debe commitearse ni usarse como contexto.

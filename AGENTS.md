@@ -62,4 +62,5 @@ Frontend: `npm run dev`, `npm run lint`, `npm run format` y `npm run build` exis
 
 - Usar Conventional Commits si el usuario pide commit.
 - Mantener `develop` como rama de trabajo con configuración IA.
-- Si el usuario pide push sin rama concreta, subir a `develop` y `main`; `main` debe quedar limpio sin `.claude/`, `.opencode/`, `AGENTS.md` ni `docs/ai-development-rules.md`.
+- Si el usuario pide push sin rama concreta, subir a `develop` y `main`; `main` debe quedar limpio sin `.claude/`, `.opencode/`, `AGENTS.md`, `CLAUDE.md`, `opencode.json`, `docs/ai-development-rules.md` ni documentación agentic.
+- `git push` está permitido solo bajo petición explícita del usuario; antes de cerrar, comprobar que `origin/main` no contiene archivos IA.
