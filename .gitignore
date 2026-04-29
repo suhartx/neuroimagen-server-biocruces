@@ -10,3 +10,9 @@ data/studies/*
 !data/studies/.gitkeep
 *.log
 .DS_Store
+
+# AI assistant workspace files live only on develop.
+.claude/
+.opencode/
+AGENTS.md
+docs/ai-development-rules.md
