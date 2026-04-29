@@ -7,7 +7,7 @@
 cp .env.example .env
 ```
 
-3. Revisar contraseñas y `PROCESSOR_COMMAND`.
+3. Revisar contraseñas, rutas y `PROCESSOR_COMMAND` según `docs/configuration.md`.
 4. Levantar servicios:
 
 ```bash
