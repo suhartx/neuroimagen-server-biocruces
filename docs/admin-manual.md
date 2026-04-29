@@ -20,3 +20,5 @@ Respaldar PostgreSQL y `data/`. Ambos son necesarios para reconstruir trazabilid
 ## Cambio De Procesador
 
 Actualizar `PROCESSOR_COMMAND` en `.env` y reiniciar `api` y `worker`.
+
+La explicación completa de variables de entorno está en `docs/configuration.md`.

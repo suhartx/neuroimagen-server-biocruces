@@ -8,6 +8,8 @@ make up
 make test
 ```
 
+El significado de cada variable de `.env` está documentado en `docs/configuration.md`.
+
 ## Backend
 
 - FastAPI en `backend/app`.

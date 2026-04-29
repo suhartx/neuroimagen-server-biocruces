@@ -18,6 +18,7 @@ flowchart TB
 ## Producción Básica
 
 - Cambiar secretos en `.env`.
+- Revisar todas las variables descritas en `docs/configuration.md`.
 - Restringir acceso de red al servidor.
 - Añadir TLS en Nginx o Caddy.
 - Configurar backups de PostgreSQL y `data/`.

@@ -8,6 +8,7 @@
 - Prevención básica de path traversal.
 - `.env.example` sin secretos reales.
 - `.env` ignorado por Git.
+- Variables de entorno documentadas en `docs/configuration.md`.
 - Logs técnicos separados de mensajes de usuario.
 - Sin datos identificativos de pacientes en fixtures.
 

@@ -15,6 +15,7 @@ Esta carpeta contiene la documentación técnica, operativa y de defensa del TFM
 - `processing-pipeline.md`: flujo API, Redis, worker, adapter, script y PDF.
 - `roadmap.md`: fases iniciales y evolución futura.
 - `installation.md`: instalación local.
+- `configuration.md`: variables de entorno y uso de `.env`.
 - `deployment.md`: despliegue con Docker Compose.
 - `user-manual.md`: manual para usuario funcional.
 - `admin-manual.md`: administración básica.
