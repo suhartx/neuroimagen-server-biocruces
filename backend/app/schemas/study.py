@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from uuid import UUID
 
@@ -15,9 +17,12 @@ class StudyRead(BaseModel):
     error_message: str | None = None
     processor_name: str | None = None
     processor_version: str | None = None
+    processor_backend: str | None = None
+    bids_subject_id: str | None = None
     file_size: int | None = None
     checksum: str | None = None
     has_pdf: bool = False
+    has_output_zip: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -27,6 +32,7 @@ class StudyStatusRead(BaseModel):
     status: str
     error_message: str | None = None
     has_pdf: bool
+    has_output_zip: bool = False
     updated_at: datetime
 
 
@@ -34,3 +40,4 @@ class UploadResponse(BaseModel):
     id: UUID
     status: str
     message: str
+    bids_subject_id: str | None = None

@@ -1,6 +1,6 @@
 # Arquitectura
 
-El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo clínico. El script externo se invoca mediante `processor_adapter` como caja negra.
+El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo clínico. El procesador externo se invoca mediante `processor_adapter` como caja negra y puede seleccionarse por configuración (`dummy` o `compneuro`).
 
 ```mermaid
 flowchart TB
@@ -15,7 +15,8 @@ flowchart TB
     Redis[(Redis broker)]
     Worker[Celery worker]
     Adapter[processor_adapter]
-    Script[script Python externo]
+    Script[procesador externo]
+    Artifacts[PDF tecnico / ZIP]
     Storage[(data/studies filesystem)]
   end
   Browser --> Proxy
@@ -30,14 +31,18 @@ flowchart TB
   Worker --> Adapter
   Adapter --> Script
   Script --> Storage
+  Worker --> Artifacts
+  Artifacts --> Storage
 ```
+
+Para `compneuro-anatproc`, el servicio `worker` puede construirse con `worker/Dockerfile.compneuro`, derivado de `compneurobilbaolab/compneuro-anatproc:1.1`. No se usa Docker-in-Docker: Celery y las herramientas de neuroimagen conviven en el mismo contenedor worker.
 
 ## Componentes
 
 - `frontend`: interfaz simple para subida, listado, estado y descarga.
-- `api`: valida entradas, registra estudios, expone OpenAPI y descarga PDFs.
+- `api`: valida entradas, registra estudios, prepara BIDS, expone OpenAPI y descarga PDFs/ZIPs.
 - `worker`: ejecuta tareas largas fuera del ciclo HTTP.
-- `processor_adapter`: contrato estable con el script CLI externo.
+- `processor_adapter`: contrato estable con el procesador externo y estrategia por backend.
 - `postgres`: persistencia relacional.
 - `redis`: cola de tareas.
 - `filesystem`: almacenamiento inicial sustituible por S3/MinIO futuro.
@@ -55,6 +60,12 @@ erDiagram
     text stored_path
     text output_path
     text pdf_path
+    text output_zip_path
+    string bids_subject_id
+    string processor_backend
+    string container_image
+    text bids_path
+    text preproc_output_path
     enum status
     datetime created_at
     datetime updated_at
@@ -104,3 +115,22 @@ stateDiagram-v2
 ```
 
 Estados futuros documentados: `review_pending`, `reviewed`, `rejected`, `archived`.
+
+No se añade un estado `bids_prepared` en la primera integración: la preparación BIDS ocurre antes de encolar y queda trazada mediante campos y auditoría. Si falla, la subida responde con error y no crea un estudio procesable.
+
+## Worker Compneuro
+
+```mermaid
+flowchart LR
+  API[FastAPI] --> Data[(data/studies)]
+  API --> Redis[(Redis)]
+  Redis --> Worker[Celery worker compneuro]
+  Worker --> Adapter[CompneuroAnatprocAdapter]
+  Adapter --> Project[/project symlink gestionado]
+  Project --> BIDS[bids_project/data]
+  Project --> Preproc[output/Preproc]
+  Adapter --> Launcher[src/apreproc_launcher.sh]
+  Launcher --> Preproc
+  Worker --> PDF[technical_report.pdf]
+  Worker --> ZIP[outputs.zip]
+```

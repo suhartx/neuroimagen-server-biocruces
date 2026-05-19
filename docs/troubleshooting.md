@@ -18,4 +18,18 @@ Revisar `data/studies/{study_id}/logs/processor.log` y el valor de `PROCESSOR_CO
 
 ## No Hay PDF
 
-El script externo debe generar al menos un `.pdf` dentro del directorio `output`.
+En modo `dummy`, el script externo debe generar al menos un `.pdf` dentro del directorio `output`.
+
+En modo `compneuro`, el pipeline no genera PDF clínico. La plataforma genera `logs/technical_report.pdf` después de detectar outputs en `output/Preproc`.
+
+## No Hay ZIP
+
+Revisar que `GENERATE_OUTPUT_ZIP=true`, que el estudio esté `completed` y que existan ficheros en `data/studies/{study_id}/output/Preproc`.
+
+## Compneuro Falla Por `/project`
+
+`compneuro-anatproc` espera `/project/data/participants.tsv` y escribe en `/project/Preproc`. El worker crea un symlink gestionado hacia `runtime_project`. Si `/project` existe dentro del contenedor y no es un symlink gestionado, el procesamiento falla para no pisar rutas externas.
+
+## Outputs Faltantes
+
+El procesamiento compneuro solo se marca correcto si existen `Preproc/BET` y `Preproc/ProbTissue`. Si falta una carpeta, revisar `logs/processor.log` y permisos del volumen `./data:/app/data`.

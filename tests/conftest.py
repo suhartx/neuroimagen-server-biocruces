@@ -18,10 +18,21 @@ from app.main import app
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
+    yield from _make_client(tmp_path, monkeypatch)
+
+
+@pytest.fixture()
+def compneuro_client(tmp_path, monkeypatch):
+    yield from _make_client(tmp_path, monkeypatch, PROCESSOR_BACKEND="compneuro", ALLOWED_EXTENSIONS=".nii.gz")
+
+
+def _make_client(tmp_path, monkeypatch, **extra_env):
     db_path = tmp_path / "test.db"
     storage_path = tmp_path / "studies"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
     monkeypatch.setenv("STORAGE_ROOT", str(storage_path))
+    for key, value in extra_env.items():
+        monkeypatch.setenv(key, value)
     get_settings.cache_clear()
 
     engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})

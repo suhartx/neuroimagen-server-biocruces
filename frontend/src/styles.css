@@ -71,6 +71,14 @@ input[type="file"] {
   padding: 12px;
 }
 
+input[type="text"] {
+  flex: 0 1 180px;
+  border: 1px solid #c6d6df;
+  border-radius: 12px;
+  padding: 12px;
+  font: inherit;
+}
+
 button, .download {
   border: 0;
   border-radius: 999px;
@@ -102,6 +110,23 @@ button:disabled {
 
 .message {
   font-weight: 700;
+  color: #12324a;
+}
+
+.hint {
+  color: #475467;
+  line-height: 1.55;
+}
+
+code {
+  border-radius: 6px;
+  background: #eef4f8;
+  padding: 2px 5px;
+}
+
+.secondary-download {
+  margin-left: 8px;
+  background: #e6f0f4;
   color: #12324a;
 }
 

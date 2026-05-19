@@ -24,7 +24,18 @@ El fichero `.env` no debe commitearse. Puede contener contraseñas, rutas locale
 | `MAX_UPLOAD_SIZE_MB` | Tamaño máximo de fichero permitido, en MB. | `1024` |
 | `PROCESSOR_NAME` | Nombre técnico del procesador configurado. | `dummy-development-processor` |
 | `PROCESSOR_VERSION` | Versión técnica del procesador configurado. | `0.1.0` |
+| `PROCESSOR_BACKEND` | Backend activo: `dummy` o `compneuro`. | `dummy` |
 | `PROCESSOR_COMMAND` | Comando CLI invocado por `processor_adapter`. | Dummy de desarrollo |
+| `WORKER_DOCKERFILE` | Dockerfile usado para construir el worker. | `backend/Dockerfile` |
+| `COMPNEURO_CONTAINER_IMAGE` | Imagen base documentada para trazabilidad de compneuro. | `compneurobilbaolab/compneuro-anatproc:1.1` |
+| `COMPNEURO_ANATPROC_REF` | Commit del repo externo usado al construir el worker compneuro. | `a2f3e7c9523ed521c3f85f7dffde5ee8fb400842` |
+| `COMPNEURO_PROJECT_MOUNT` | Ruta que el pipeline externo ve como proyecto. | `/project` |
+| `COMPNEURO_COMMAND` | Comando ejecutado por el adapter compneuro. | `bash /app/src/apreproc_launcher.sh` |
+| `PROCESSING_TIMEOUT_SECONDS` | Timeout del procesador; `0` lo desactiva. | `0` |
+| `MAX_CONCURRENT_PROCESSING_JOBS` | Concurrencia del worker. Para compneuro se recomienda `1`. | `1` |
+| `GENERATE_OUTPUT_ZIP` | Generar ZIP de outputs `Preproc`. | `true` |
+| `GENERATE_TECHNICAL_PDF` | Generar PDF técnico de procesamiento. | `true` |
+| `BIDS_VALIDATE` | Reservado para validación BIDS formal futura. | `false` |
 | `CORS_ORIGINS` | Orígenes permitidos para llamadas desde navegador. | `http://localhost,http://localhost:5173` |
 
 ## `PROCESSOR_COMMAND`
@@ -45,6 +56,23 @@ Placeholders disponibles:
 - `{logs_dir}`: directorio reservado para logs técnicos.
 
 El script configurado debe generar al menos un fichero `.pdf` dentro de `output_dir`. Si no lo hace, el procesamiento se marca como fallido.
+
+## `PROCESSOR_BACKEND=compneuro`
+
+La integración real ejecuta `compneuro-anatproc` dentro del worker, no mediante Docker-in-Docker. Configuración mínima:
+
+```env
+PROCESSOR_BACKEND=compneuro
+PROCESSOR_NAME=compneuro-anatproc
+PROCESSOR_VERSION=1.1
+WORKER_DOCKERFILE=worker/Dockerfile.compneuro
+ALLOWED_EXTENSIONS=.nii.gz
+MAX_CONCURRENT_PROCESSING_JOBS=1
+GENERATE_OUTPUT_ZIP=true
+GENERATE_TECHNICAL_PDF=true
+```
+
+La API prepara automáticamente BIDS para un único sujeto T1w. Si el sujeto se deja vacío, genera un identificador seguro. Si se informa un valor inválido, responde `400`.
 
 ## Seguridad Operativa
 
