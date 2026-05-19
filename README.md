@@ -2,7 +2,7 @@
 
 Repositorio para el TFM **"Diseño e implementación de un servicio de procesamiento de imágenes de resonancia magnética para la generación automática de informes clínicos en Neurorrehabilitación"**.
 
-La plataforma permite subir estudios anonimizados desde una GUI web, registrar la subida, lanzar procesamiento asíncrono mediante un script Python externo tratado como caja negra, guardar estados y descargar el PDF generado.
+La plataforma permite subir estudios anonimizados desde una GUI web, registrar la subida, preparar una estructura BIDS por estudio, lanzar procesamiento asíncrono mediante un procesador externo tratado como caja negra, guardar estados y descargar un PDF técnico y, cuando aplica, un ZIP de outputs.
 
 ## Arquitectura Resumida
 
@@ -14,9 +14,10 @@ flowchart LR
   API --> Redis[(Redis)]
   Redis --> Worker[Celery worker]
   Worker --> Adapter[processor_adapter]
-  Adapter --> CLI[Script Python externo]
-  CLI --> PDF[PDF generado]
-  API --> Download[Descarga PDF]
+  Adapter --> CLI[Procesador externo]
+  CLI --> Outputs[Preproc / PDF dummy]
+  Worker --> Artifacts[PDF tecnico / ZIP]
+  API --> Download[Descarga resultados]
   Proxy[Nginx] --> GUI
   Proxy --> API
 ```
@@ -59,19 +60,26 @@ make clean    # borrar volúmenes y estudios locales
 4. FastAPI encola una tarea Celery en Redis.
 5. El worker ejecuta `processor_adapter`.
 6. El adaptador invoca el comando configurado en `PROCESSOR_COMMAND`.
-7. El script externo genera un PDF en `output`.
-8. El worker detecta el PDF, actualiza estado y guarda logs.
-9. La GUI permite descargar el PDF.
+7. El procesador dummy genera un PDF o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
+8. El worker detecta outputs, genera un PDF técnico y opcionalmente un ZIP.
+9. La GUI permite descargar el PDF técnico y/o el ZIP.
 
-## Integrar El Script Real
+## Procesadores
 
-No modifiques la aplicación para acoplarla al script. Cambiá `.env`:
+El backend de procesamiento se selecciona con `PROCESSOR_BACKEND`:
+
+- `dummy`: procesador de desarrollo que genera un PDF sin validez clínica.
+- `compneuro`: integración con `compneuro-anatproc` para imagen anatómica T1w `.nii.gz`.
+
+Para dummy se puede cambiar `.env`:
 
 ```env
 PROCESSOR_COMMAND=python /app/external_processor/process.py --input {input_dir} --output {output_dir} --study-id {study_id}
 ```
 
 Placeholders disponibles: `{input_dir}`, `{output_dir}`, `{study_id}`, `{logs_dir}`.
+
+Para `compneuro`, el worker debe construirse con `WORKER_DOCKERFILE=worker/Dockerfile.compneuro` y `PROCESSOR_BACKEND=compneuro`. No se usa Docker-in-Docker: Celery corre dentro de una imagen derivada de `compneurobilbaolab/compneuro-anatproc:1.1`.
 
 ## Estructura
 
@@ -100,6 +108,8 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 - Sin retención automática de datos.
 - Sin MinIO/S3 en esta versión.
 - El procesador dummy no tiene validez clínica.
+- La integración `compneuro-anatproc` inicial ejecuta solo `src/apreproc_launcher.sh`; `brainmeasures.sh` queda como mejora futura.
+- El PDF de la integración real es un resumen técnico de procesamiento, no un informe clínico.
 
 ## Roadmap
 

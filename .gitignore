@@ -4,9 +4,11 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 node_modules/
+.venv/
 dist/
 coverage/
 data/studies/*
 !data/studies/.gitkeep
+compneuro-anatproc/
 *.log
 .DS_Store

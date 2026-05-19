@@ -10,7 +10,8 @@ from app.models.processing_job import ProcessingJob
 from app.models.study import Study, StudyStatus
 from app.services.audit import record_event
 from app.services.storage import LocalStudyStorage
-from processor_adapter import ProcessorAdapter
+from processor_adapter import create_processor_adapter
+from processor_adapter.artifacts import write_outputs_zip, write_technical_pdf
 from worker.celery_app import celery_app
 
 logger = get_task_logger(__name__)
@@ -20,7 +21,6 @@ logger = get_task_logger(__name__)
 def process_study(self, study_id: str, job_id: str) -> None:
     settings = get_settings()
     storage = LocalStudyStorage(settings.storage_root)
-    adapter = ProcessorAdapter(settings.processor_command)
     db = SessionLocal()
     study_uuid = UUID(study_id)
     job_uuid = UUID(job_id)
@@ -42,11 +42,22 @@ def process_study(self, study_id: str, job_id: str) -> None:
         record_event(db, "processing_started", study.id, {"job_id": str(job.id)})
         db.commit()
 
+        processor_backend = study.processor_backend or settings.processor_backend
+        adapter = create_processor_adapter(
+            backend=processor_backend,
+            processor_command=settings.processor_command,
+            compneuro_command=settings.compneuro_command,
+            compneuro_project_mount=settings.compneuro_project_mount,
+            timeout_seconds=settings.processing_timeout_seconds,
+        )
+
         result = adapter.run(
             input_dir=storage.input_dir(study.id),
             output_dir=storage.output_dir(study.id),
             study_id=str(study.id),
             logs_dir=storage.logs_dir(study.id),
+            bids_project_dir=storage.bids_project_dir(study.id),
+            runtime_project_dir=storage.runtime_project_dir(study.id),
         )
 
         finished = datetime.utcnow()
@@ -55,12 +66,43 @@ def process_study(self, study_id: str, job_id: str) -> None:
         job.log_path = str(result.log_path)
         study.processing_finished_at = finished
         study.output_path = str(storage.output_dir(study.id))
+        study.preproc_output_path = str(result.preproc_path) if result.preproc_path else study.preproc_output_path
 
-        if result.success and result.pdf_path:
+        if result.success:
+            pdf_path = result.pdf_path
+            output_zip_path = result.output_zip_path
+            if processor_backend.strip().lower() == "compneuro":
+                if settings.generate_output_zip and result.preproc_path:
+                    output_zip_path = write_outputs_zip(result.preproc_path, storage.output_zip_path(study.id))
+                    study.output_zip_path = str(output_zip_path)
+                if settings.generate_technical_pdf:
+                    pdf_path = write_technical_pdf(
+                        storage.technical_report_path(study.id),
+                        study_id=str(study.id),
+                        bids_subject_id=study.bids_subject_id,
+                        processor_name=study.processor_name,
+                        processor_version=study.processor_version,
+                        processor_backend=study.processor_backend,
+                        status=StudyStatus.completed.value,
+                        output_files=result.output_files,
+                        warnings=result.warnings,
+                    )
             study.status = StudyStatus.completed
-            study.pdf_path = str(result.pdf_path)
+            study.pdf_path = str(pdf_path) if pdf_path else None
+            if output_zip_path:
+                study.output_zip_path = str(output_zip_path)
             job.status = StudyStatus.completed.value
-            record_event(db, "processing_completed", study.id, {"pdf_path": str(result.pdf_path), "duration_seconds": result.duration_seconds})
+            record_event(
+                db,
+                "processing_completed",
+                study.id,
+                {
+                    "pdf_path": str(pdf_path) if pdf_path else None,
+                    "output_zip_path": str(output_zip_path) if output_zip_path else None,
+                    "output_count": len(result.output_files),
+                    "duration_seconds": result.duration_seconds,
+                },
+            )
         else:
             study.status = StudyStatus.failed
             study.error_message = result.error_message or "Error desconocido durante el procesamiento"

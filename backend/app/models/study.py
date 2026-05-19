@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
@@ -24,6 +26,12 @@ class Study(Base):
     stored_path: Mapped[str] = mapped_column(Text, nullable=False)
     output_path: Mapped[str | None] = mapped_column(Text)
     pdf_path: Mapped[str | None] = mapped_column(Text)
+    output_zip_path: Mapped[str | None] = mapped_column(Text)
+    bids_subject_id: Mapped[str | None] = mapped_column(String(128))
+    processor_backend: Mapped[str | None] = mapped_column(String(100))
+    container_image: Mapped[str | None] = mapped_column(String(255))
+    bids_path: Mapped[str | None] = mapped_column(Text)
+    preproc_output_path: Mapped[str | None] = mapped_column(Text)
     status: Mapped[StudyStatus] = mapped_column(Enum(StudyStatus), default=StudyStatus.uploaded, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

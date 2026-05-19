@@ -1,0 +1,31 @@
+FROM compneurobilbaolab/compneuro-anatproc:1.1
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+ARG COMPNEURO_ANATPROC_REPO=https://github.com/compneurobilbao/compneuro-anatproc.git
+ARG COMPNEURO_ANATPROC_REF=a2f3e7c9523ed521c3f85f7dffde5ee8fb400842
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && git clone "${COMPNEURO_ANATPROC_REPO}" /tmp/compneuro-anatproc \
+    && cd /tmp/compneuro-anatproc \
+    && git checkout "${COMPNEURO_ANATPROC_REF}" \
+    && cp -R src utils brain_templates /app/ \
+    && rm -rf /tmp/compneuro-anatproc
+
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN python -m pip install --no-cache-dir -r /app/backend/requirements.txt
+
+COPY backend /app/backend
+COPY worker /app/worker
+COPY processor_adapter /app/processor_adapter
+COPY external_processor /app/external_processor
+
+ENV PYTHONPATH=/app:/app/backend
+WORKDIR /app/backend
+
+CMD ["celery", "-A", "worker.celery_app.celery_app", "worker", "--loglevel=INFO", "--concurrency=1"]

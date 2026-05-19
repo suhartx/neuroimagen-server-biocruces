@@ -18,4 +18,5 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
+    worker_prefetch_multiplier=1,
 )

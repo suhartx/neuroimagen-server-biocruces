@@ -17,14 +17,41 @@ class LocalStudyStorage:
     def input_dir(self, study_id: UUID) -> Path:
         return self.study_dir(study_id) / "input"
 
+    def input_original_dir(self, study_id: UUID) -> Path:
+        return self.input_dir(study_id) / "original"
+
+    def bids_project_dir(self, study_id: UUID) -> Path:
+        return self.study_dir(study_id) / "bids_project"
+
+    def bids_data_dir(self, study_id: UUID) -> Path:
+        return self.bids_project_dir(study_id) / "data"
+
+    def runtime_project_dir(self, study_id: UUID) -> Path:
+        return self.study_dir(study_id) / "runtime_project"
+
     def output_dir(self, study_id: UUID) -> Path:
         return self.study_dir(study_id) / "output"
+
+    def preproc_output_dir(self, study_id: UUID) -> Path:
+        return self.output_dir(study_id) / "Preproc"
 
     def logs_dir(self, study_id: UUID) -> Path:
         return self.study_dir(study_id) / "logs"
 
+    def technical_report_path(self, study_id: UUID) -> Path:
+        return self.logs_dir(study_id) / "technical_report.pdf"
+
+    def output_zip_path(self, study_id: UUID) -> Path:
+        return self.study_dir(study_id) / "outputs.zip"
+
     def prepare(self, study_id: UUID) -> None:
-        for directory in [self.input_dir(study_id), self.output_dir(study_id), self.logs_dir(study_id)]:
+        for directory in [
+            self.input_dir(study_id),
+            self.input_original_dir(study_id),
+            self.bids_data_dir(study_id),
+            self.output_dir(study_id),
+            self.logs_dir(study_id),
+        ]:
             directory.mkdir(parents=True, exist_ok=True)
 
     def safe_path(self, base: Path, filename: str) -> Path:
@@ -35,7 +62,7 @@ class LocalStudyStorage:
 
     def save_upload(self, study_id: UUID, upload: UploadFile, safe_filename: str) -> tuple[Path, int, str]:
         self.prepare(study_id)
-        destination = self.safe_path(self.input_dir(study_id), safe_filename)
+        destination = self.safe_path(self.input_original_dir(study_id), safe_filename)
         hasher = hashlib.sha256()
         size = 0
         with destination.open("wb") as out_file:

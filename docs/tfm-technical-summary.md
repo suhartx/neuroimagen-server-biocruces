@@ -1,7 +1,7 @@
 # Resumen Técnico Para TFM
 
-Este proyecto implementa una plataforma web containerizada para integrar procesamiento de neuroimagen por lotes con generación automática de informes PDF.
+Este proyecto implementa una plataforma web containerizada para integrar procesamiento de neuroimagen por lotes con generación automática de resúmenes técnicos PDF y descarga de outputs.
 
 La contribución principal no es el algoritmo clínico, sino la capa software que permite operarlo de forma controlada, trazable y desacoplada. La arquitectura separa interfaz, API, persistencia, cola, worker y adaptador CLI, reduciendo acoplamiento y facilitando sustitución futura del procesador.
 
-La primera versión prioriza mantenibilidad, documentación, seguridad básica, trazabilidad y despliegue reproducible con Docker Compose. El sistema no es todavía un producto sanitario completo y requiere validación clínica, autenticación, hardening y políticas de datos antes de uso hospitalario real.
+La integración con `compneuro-anatproc` prepara automáticamente BIDS para un T1w `.nii.gz`, ejecuta el pipeline anatómico desde un worker basado en su imagen Docker, valida outputs `Preproc/BET` y `Preproc/ProbTissue`, y genera artefactos técnicos propios de la plataforma. El sistema no es todavía un producto sanitario completo y requiere validación clínica, autenticación, hardening y políticas de datos antes de uso hospitalario real.

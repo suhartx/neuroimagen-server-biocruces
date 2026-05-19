@@ -29,6 +29,10 @@
 - Futuro 11: Prometheus, Grafana y Loki.
 - Futuro 12: políticas de retención y archivado.
 - Futuro 13: revisión clínica y validación de informes.
+- Futuro 14: sesiones BIDS y múltiples sujetos por estudio.
+- Futuro 15: ejecutar `utils/brainmeasures.sh` después de `apreproc_launcher.sh`.
+- Futuro 16: múltiples pipelines seleccionables por estudio.
+- Futuro 17: validación BIDS formal con `bids-validator` si el coste operativo queda justificado.
 
 ## Criterio Arquitectónico
 

@@ -13,6 +13,7 @@ TFM para una plataforma web de procesamiento asíncrono de neuroimagen. El valor
 - `worker/`: tareas Celery que ejecutan procesos largos fuera del ciclo HTTP.
 - `processor_adapter/`: frontera obligatoria con cualquier script externo.
 - `external_processor/`: procesador dummy de desarrollo; no tiene validez clínica.
+- `worker/Dockerfile.compneuro`: worker opcional para ejecutar `compneuro-anatproc` sin Docker-in-Docker.
 - `infra/reverse-proxy/`: Nginx como entrada HTTP.
 - `data/studies/`: almacenamiento local de estudios, ignorado por Git.
 
@@ -39,6 +40,7 @@ Frontend: `npm run dev`, `npm run lint`, `npm run format` y `npm run build` exis
 - Cambios pequeños, revisables y alineados con la arquitectura existente.
 - No acoplar API ni worker al algoritmo clínico: usar siempre `processor_adapter`.
 - No modificar scripts clínicos reales sin autorización explícita.
+- Para `compneuro-anatproc`, tratar el repositorio externo como caja negra versionada y ejecutar solo `src/apreproc_launcher.sh` salvo nueva autorización.
 - No añadir autenticación, roles, MinIO/S3, TLS, retención ni funcionalidades de roadmap salvo petición explícita.
 - Mantener la GUI simple, clara y en castellano.
 - No usar datos clínicos reales, identificativos ni fixtures sensibles.

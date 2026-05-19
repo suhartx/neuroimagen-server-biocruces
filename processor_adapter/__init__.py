@@ -1,3 +1,3 @@
-from processor_adapter.adapter import ProcessorAdapter, ProcessorResult
+from processor_adapter.adapter import CompneuroAnatprocAdapter, DummyProcessorAdapter, ProcessorAdapter, ProcessorResult, create_processor_adapter
 
-__all__ = ["ProcessorAdapter", "ProcessorResult"]
+__all__ = ["CompneuroAnatprocAdapter", "DummyProcessorAdapter", "ProcessorAdapter", "ProcessorResult", "create_processor_adapter"]

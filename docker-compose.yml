@@ -38,7 +38,16 @@ services:
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-1024}
       PROCESSOR_NAME: ${PROCESSOR_NAME:-dummy-development-processor}
       PROCESSOR_VERSION: ${PROCESSOR_VERSION:-0.1.0}
+      PROCESSOR_BACKEND: ${PROCESSOR_BACKEND:-dummy}
       PROCESSOR_COMMAND: ${PROCESSOR_COMMAND:-python /app/external_processor/dummy_processor.py --input {input_dir} --output {output_dir} --study-id {study_id}}
+      COMPNEURO_CONTAINER_IMAGE: ${COMPNEURO_CONTAINER_IMAGE:-compneurobilbaolab/compneuro-anatproc:1.1}
+      COMPNEURO_PROJECT_MOUNT: ${COMPNEURO_PROJECT_MOUNT:-/project}
+      COMPNEURO_COMMAND: ${COMPNEURO_COMMAND:-bash /app/src/apreproc_launcher.sh}
+      PROCESSING_TIMEOUT_SECONDS: ${PROCESSING_TIMEOUT_SECONDS:-0}
+      MAX_CONCURRENT_PROCESSING_JOBS: ${MAX_CONCURRENT_PROCESSING_JOBS:-1}
+      GENERATE_OUTPUT_ZIP: ${GENERATE_OUTPUT_ZIP:-true}
+      GENERATE_TECHNICAL_PDF: ${GENERATE_TECHNICAL_PDF:-true}
+      BIDS_VALIDATE: ${BIDS_VALIDATE:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:5173}
     depends_on:
       postgres:
@@ -57,7 +66,9 @@ services:
   worker:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: ${WORKER_DOCKERFILE:-backend/Dockerfile}
+      args:
+        COMPNEURO_ANATPROC_REF: ${COMPNEURO_ANATPROC_REF:-a2f3e7c9523ed521c3f85f7dffde5ee8fb400842}
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://neuroimagen:neuroimagen@postgres:5432/neuroimagen}
@@ -68,7 +79,16 @@ services:
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-1024}
       PROCESSOR_NAME: ${PROCESSOR_NAME:-dummy-development-processor}
       PROCESSOR_VERSION: ${PROCESSOR_VERSION:-0.1.0}
+      PROCESSOR_BACKEND: ${PROCESSOR_BACKEND:-dummy}
       PROCESSOR_COMMAND: ${PROCESSOR_COMMAND:-python /app/external_processor/dummy_processor.py --input {input_dir} --output {output_dir} --study-id {study_id}}
+      COMPNEURO_CONTAINER_IMAGE: ${COMPNEURO_CONTAINER_IMAGE:-compneurobilbaolab/compneuro-anatproc:1.1}
+      COMPNEURO_PROJECT_MOUNT: ${COMPNEURO_PROJECT_MOUNT:-/project}
+      COMPNEURO_COMMAND: ${COMPNEURO_COMMAND:-bash /app/src/apreproc_launcher.sh}
+      PROCESSING_TIMEOUT_SECONDS: ${PROCESSING_TIMEOUT_SECONDS:-0}
+      MAX_CONCURRENT_PROCESSING_JOBS: ${MAX_CONCURRENT_PROCESSING_JOBS:-1}
+      GENERATE_OUTPUT_ZIP: ${GENERATE_OUTPUT_ZIP:-true}
+      GENERATE_TECHNICAL_PDF: ${GENERATE_TECHNICAL_PDF:-true}
+      BIDS_VALIDATE: ${BIDS_VALIDATE:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:5173}
     depends_on:
       postgres:
@@ -77,7 +97,7 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/app/data
-    command: celery -A worker.celery_app.celery_app worker --loglevel=INFO
+    command: sh -c "celery -A worker.celery_app.celery_app worker --loglevel=INFO --concurrency=$${MAX_CONCURRENT_PROCESSING_JOBS:-1}"
 
   frontend:
     build:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import lru_cache
 from pathlib import Path
 
@@ -21,8 +23,17 @@ class Settings(BaseSettings):
         "python /app/external_processor/dummy_processor.py "
         "--input {input_dir} --output {output_dir} --study-id {study_id}"
     )
+    processor_backend: str = "dummy"
     processor_name: str = "dummy-development-processor"
     processor_version: str | None = "0.1.0"
+    compneuro_container_image: str = "compneurobilbaolab/compneuro-anatproc:1.1"
+    compneuro_project_mount: Path = Path("/project")
+    compneuro_command: str = "bash /app/src/apreproc_launcher.sh"
+    processing_timeout_seconds: int = 0
+    max_concurrent_processing_jobs: int = 1
+    generate_output_zip: bool = True
+    generate_technical_pdf: bool = True
+    bids_validate: bool = False
     cors_origins: str = "http://localhost,http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
