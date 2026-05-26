@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     max_concurrent_processing_jobs: int = 1
     generate_output_zip: bool = True
     generate_technical_pdf: bool = True
+    generate_rendered_png: bool = True
+    nifti_renderer: str = "slicer"
+    nifti_render_max_files: int = 50
+    nifti_render_timeout_seconds: int = 300
+    technical_report_filename: str = "technical_report.pdf"
     bids_validate: bool = False
     cors_origins: str = "http://localhost,http://localhost:5173"
 

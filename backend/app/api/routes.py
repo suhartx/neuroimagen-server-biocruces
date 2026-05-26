@@ -129,6 +129,7 @@ def get_study_status(study_id: UUID, db: Session = Depends(get_db)) -> StudyStat
         error_message=study.error_message,
         has_pdf=bool(study.pdf_path),
         has_output_zip=bool(study.output_zip_path),
+        processing_warnings=study.processing_warnings,
         updated_at=study.updated_at,
     )
 
@@ -182,4 +183,5 @@ def to_study_read(study: Study) -> StudyRead:
         checksum=study.checksum,
         has_pdf=bool(study.pdf_path),
         has_output_zip=bool(study.output_zip_path),
+        processing_warnings=study.processing_warnings,
     )

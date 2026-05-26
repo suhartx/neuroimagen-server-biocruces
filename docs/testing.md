@@ -12,6 +12,11 @@ Tests actuales:
 - validación y generación de sujeto BIDS.
 - preparación BIDS para un único T1w.
 - adapter compneuro en modo simulado.
+- búsqueda de `.nii` y `.nii.gz` en `Preproc`.
+- generación de comandos FSL `slicer` sin ejecutar FSL real.
+- generación de PDF técnico con PNG dummy y nombres de NIfTI.
+- descarga del PDF técnico desde API.
+- comportamiento sin NIfTI y con fallo de renderizado.
 - generación de PDF técnico y ZIP.
 
 Ejecutar:
@@ -50,3 +55,5 @@ MAX_CONCURRENT_PROCESSING_JOBS=1
 ```
 
 Fichero de referencia local: `compneuro-anatproc/data/sub-O01/anat/sub-O01_T1w.nii.gz`.
+
+Si esa carpeta local no existe, usar cualquier T1w `.nii.gz` anonimizado disponible. `compneuro-anatproc/` no es una dependencia permanente del proyecto; la integración real usa la imagen Docker configurada.

@@ -23,6 +23,7 @@ class StudyRead(BaseModel):
     checksum: str | None = None
     has_pdf: bool = False
     has_output_zip: bool = False
+    processing_warnings: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -33,6 +34,7 @@ class StudyStatusRead(BaseModel):
     error_message: str | None = None
     has_pdf: bool
     has_output_zip: bool = False
+    processing_warnings: str | None = None
     updated_at: datetime
 
 

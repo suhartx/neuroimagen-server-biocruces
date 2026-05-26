@@ -26,6 +26,7 @@ sequenceDiagram
   P->>S: Ejecuta backend configurado
   S->>FS: Genera PDF dummy o Preproc
   P-->>W: Resultado y outputs detectados
+  W->>FS: Renderiza NIfTI con FSL slicer
   W->>FS: Genera PDF tecnico y ZIP si aplica
   W->>D: completed o failed
   F->>A: Consulta estudios
@@ -47,6 +48,7 @@ Salida:
 - éxito/error.
 - código de salida.
 - ruta del PDF, si el backend lo genera o si la plataforma crea un PDF técnico.
+- rutas de PNG renderizados desde NIfTI, si aplica.
 - lista de outputs.
 - ruta del ZIP, si aplica.
 - log técnico.
@@ -73,9 +75,11 @@ data/studies/{study_id}/
   runtime_project/Preproc -> ../output/Preproc
   output/Preproc/BET
   output/Preproc/ProbTissue
+  output/rendered_png
+  output/reports/technical_report.pdf
+  output/outputs.zip
   logs/processor.log
-  logs/technical_report.pdf
-  outputs.zip
+  logs/rendering.log
 ```
 
 `compneuro-anatproc` usa rutas hardcodeadas bajo `/project`. La plataforma crea un `runtime_project` aislado por estudio y el worker compneuro apunta `/project` a esa carpeta mediante symlink gestionado. Esto evita Docker-in-Docker y evita modificar los scripts externos.
@@ -92,8 +96,17 @@ flowchart TD
   Mount --> Launcher[src/apreproc_launcher.sh]
   Launcher --> BET[Preproc/BET]
   Launcher --> Prob[Preproc/ProbTissue]
-  BET --> Report[PDF tecnico]
-  Prob --> Report
+  BET --> Render[PNG con FSL slicer]
+  Prob --> Render
+  Render --> Report[PDF tecnico]
   BET --> Zip[outputs.zip]
   Prob --> Zip
 ```
+
+## Post-Procesado Técnico
+
+Después de una ejecución correcta de `compneuro`, el worker busca `.nii` y `.nii.gz` dentro de `output/Preproc`, con límite configurable por `NIFTI_RENDER_MAX_FILES`. Cada fichero se renderiza con FSL `slicer` usando el patrón conceptual `slicer input.nii.gz -a output.png` y se guarda en `output/rendered_png/`.
+
+El PDF se guarda por defecto en `output/reports/technical_report.pdf` e incluye metadatos del estudio, sujeto BIDS, pipeline usado, listado de outputs, nombre de cada NIfTI y la imagen PNG renderizada. Si no hay NIfTI o falla alguna conversión, el PDF se genera igual con avisos técnicos. Estos avisos no son trazas internas y pueden mostrarse en la GUI.
+
+El documento es un informe técnico de artefactos generados. No interpreta imágenes ni constituye un informe clínico validado.

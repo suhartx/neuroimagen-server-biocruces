@@ -16,7 +16,8 @@ flowchart LR
   Worker --> Adapter[processor_adapter]
   Adapter --> CLI[Procesador externo]
   CLI --> Outputs[Preproc / PDF dummy]
-  Worker --> Artifacts[PDF tecnico / ZIP]
+  Worker --> Render[PNG con FSL slicer]
+  Render --> Artifacts[PDF tecnico / ZIP]
   API --> Download[Descarga resultados]
   Proxy[Nginx] --> GUI
   Proxy --> API
@@ -61,7 +62,7 @@ make clean    # borrar volúmenes y estudios locales
 5. El worker ejecuta `processor_adapter`.
 6. El adaptador invoca el comando configurado en `PROCESSOR_COMMAND`.
 7. El procesador dummy genera un PDF o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
-8. El worker detecta outputs, genera un PDF técnico y opcionalmente un ZIP.
+8. El worker detecta outputs, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
 9. La GUI permite descargar el PDF técnico y/o el ZIP.
 
 ## Procesadores
@@ -79,7 +80,9 @@ PROCESSOR_COMMAND=python /app/external_processor/process.py --input {input_dir} 
 
 Placeholders disponibles: `{input_dir}`, `{output_dir}`, `{study_id}`, `{logs_dir}`.
 
-Para `compneuro`, el worker debe construirse con `WORKER_DOCKERFILE=worker/Dockerfile.compneuro` y `PROCESSOR_BACKEND=compneuro`. No se usa Docker-in-Docker: Celery corre dentro de una imagen derivada de `compneurobilbaolab/compneuro-anatproc:1.1`.
+Para `compneuro`, el worker debe construirse con `WORKER_DOCKERFILE=worker/Dockerfile.compneuro` y `PROCESSOR_BACKEND=compneuro`. No se usa Docker-in-Docker: Celery corre dentro de una imagen derivada de `compneurobilbaolab/compneuro-anatproc:1.1`, ejecuta `src/apreproc_launcher.sh` y después usa FSL `slicer` para crear PNG técnicos desde los NIfTI generados.
+
+La carpeta local `compneuro-anatproc/`, si existe en la raíz, es solo una referencia temporal ignorada por Git. La integración real usa la imagen Docker y el build versionado del worker; esa carpeta no es una dependencia permanente y puede eliminarse.
 
 ## Estructura
 
@@ -107,7 +110,7 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 - Sin MinIO/S3 en esta versión.
 - El procesador dummy no tiene validez clínica.
 - La integración `compneuro-anatproc` inicial ejecuta solo `src/apreproc_launcher.sh`; `brainmeasures.sh` queda como mejora futura.
-- El PDF de la integración real es un resumen técnico de procesamiento, no un informe clínico.
+- El PDF de la integración real es un resumen técnico de procesamiento con PNG renderizados desde outputs NIfTI; no es un informe clínico.
 
 ## Roadmap
 

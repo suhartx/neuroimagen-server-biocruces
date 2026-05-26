@@ -20,7 +20,11 @@ Revisar `data/studies/{study_id}/logs/processor.log` y el valor de `PROCESSOR_CO
 
 En modo `dummy`, el script externo debe generar al menos un `.pdf` dentro del directorio `output`.
 
-En modo `compneuro`, el pipeline no genera PDF clínico. La plataforma genera `logs/technical_report.pdf` después de detectar outputs en `output/Preproc`.
+En modo `compneuro`, el pipeline no genera PDF clínico. La plataforma genera `output/reports/technical_report.pdf` después de detectar outputs en `output/Preproc` y renderizar PNG en `output/rendered_png/`.
+
+## No Hay PNG Renderizados
+
+Revisar `GENERATE_RENDERED_PNG=true`, `NIFTI_RENDERER=slicer` y `data/studies/{study_id}/logs/rendering.log`. En el worker compneuro, `slicer` debe estar disponible en el `PATH` porque proviene de FSL dentro de la imagen base.
 
 ## No Hay ZIP
 

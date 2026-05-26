@@ -1,3 +1,9 @@
+from pathlib import Path
+from uuid import UUID
+
+from app.models.study import Study, StudyStatus
+
+
 def test_healthcheck(client):
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -84,3 +90,26 @@ def test_compneuro_upload_cleans_storage_when_bids_preparation_fails(compneuro_c
 
     assert response.status_code == 500
     assert compneuro_client.get("/api/studies").json() == []
+
+
+def test_download_pdf_endpoint_returns_completed_report(client):
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+    )
+    study_id = response.json()["id"]
+
+    db = client.app.state.testing_session_local()
+    study = db.get(Study, UUID(study_id))
+    report_path = Path(study.output_path) / "reports" / "technical_report.pdf"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_bytes(b"%PDF-1.4\n%%EOF\n")
+    study.status = StudyStatus.completed
+    study.pdf_path = str(report_path)
+    db.commit()
+    db.close()
+
+    download = client.get(f"/api/studies/{study_id}/download/pdf")
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "application/pdf"

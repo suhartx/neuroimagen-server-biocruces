@@ -1,5 +1,6 @@
 import socket
 from datetime import datetime
+from pathlib import Path
 from uuid import UUID
 
 from celery.utils.log import get_task_logger
@@ -11,7 +12,9 @@ from app.models.study import Study, StudyStatus
 from app.services.audit import record_event
 from app.services.storage import LocalStudyStorage
 from processor_adapter import create_processor_adapter
-from processor_adapter.artifacts import write_outputs_zip, write_technical_pdf
+from processor_adapter.nifti_renderer import render_nifti_outputs
+from processor_adapter.output_packager import write_outputs_zip
+from processor_adapter.technical_pdf_report import TechnicalReportMetadata, write_technical_pdf_report
 from worker.celery_app import celery_app
 
 logger = get_task_logger(__name__)
@@ -67,30 +70,59 @@ def process_study(self, study_id: str, job_id: str) -> None:
         study.processing_finished_at = finished
         study.output_path = str(storage.output_dir(study.id))
         study.preproc_output_path = str(result.preproc_path) if result.preproc_path else study.preproc_output_path
+        study.processing_warnings = None
 
         if result.success:
             pdf_path = result.pdf_path
             output_zip_path = result.output_zip_path
+            warnings = list(result.warnings)
             if processor_backend.strip().lower() == "compneuro":
-                if settings.generate_output_zip and result.preproc_path:
-                    output_zip_path = write_outputs_zip(result.preproc_path, storage.output_zip_path(study.id))
-                    study.output_zip_path = str(output_zip_path)
-                if settings.generate_technical_pdf:
-                    pdf_path = write_technical_pdf(
-                        storage.technical_report_path(study.id),
-                        study_id=str(study.id),
-                        bids_subject_id=study.bids_subject_id,
-                        processor_name=study.processor_name,
-                        processor_version=study.processor_version,
-                        processor_backend=study.processor_backend,
-                        status=StudyStatus.completed.value,
-                        output_files=result.output_files,
-                        warnings=result.warnings,
+                rendered_outputs = []
+                if settings.generate_rendered_png and result.preproc_path:
+                    rendered_outputs = render_nifti_outputs(
+                        result.preproc_path,
+                        storage.rendered_png_dir(study.id),
+                        renderer=settings.nifti_renderer,
+                        max_files=settings.nifti_render_max_files,
+                        timeout_seconds=settings.nifti_render_timeout_seconds,
+                        log_path=storage.logs_dir(study.id) / "rendering.log",
                     )
+                    study.rendered_png_dir = str(storage.rendered_png_dir(study.id))
+                    failed_renders = [artifact for artifact in rendered_outputs if not artifact.success]
+                    warnings.extend(f"No se pudo renderizar {artifact.display_name}: {artifact.error_message}" for artifact in failed_renders)
+                    if not rendered_outputs:
+                        warnings.append("No se encontraron ficheros NIfTI renderizables en Preproc")
+                elif not settings.generate_rendered_png:
+                    warnings.append("La generacion de PNG renderizados esta desactivada por configuracion")
+                if settings.generate_technical_pdf:
+                    report_filename = Path(settings.technical_report_filename).name or "technical_report.pdf"
+                    metadata = TechnicalReportMetadata(
+                        study_id=str(study.id),
+                        study_name=study.original_filename,
+                        bids_subject_id=study.bids_subject_id,
+                        uploaded_at=study.created_at,
+                        processed_at=finished,
+                        pipeline_name=study.processor_name,
+                        pipeline_version=study.processor_version,
+                        processor_backend=study.processor_backend,
+                        logical_output_path=f"data/studies/{study.id}/output",
+                    )
+                    pdf_path = write_technical_pdf_report(
+                        storage.technical_report_path(study.id, filename=report_filename),
+                        metadata=metadata,
+                        rendered_outputs=rendered_outputs,
+                        output_files=_relative_paths(result.output_files, storage.output_dir(study.id)),
+                        warnings=warnings,
+                    )
+                if settings.generate_output_zip:
+                    output_zip_path = write_outputs_zip(storage.output_dir(study.id), storage.output_zip_path(study.id))
+                    study.output_zip_path = str(output_zip_path)
             study.status = StudyStatus.completed
             study.pdf_path = str(pdf_path) if pdf_path else None
             if output_zip_path:
                 study.output_zip_path = str(output_zip_path)
+            if warnings:
+                study.processing_warnings = "\n".join(warnings)
             job.status = StudyStatus.completed.value
             record_event(
                 db,
@@ -100,6 +132,7 @@ def process_study(self, study_id: str, job_id: str) -> None:
                     "pdf_path": str(pdf_path) if pdf_path else None,
                     "output_zip_path": str(output_zip_path) if output_zip_path else None,
                     "output_count": len(result.output_files),
+                    "warning_count": len(warnings),
                     "duration_seconds": result.duration_seconds,
                 },
             )
@@ -127,3 +160,13 @@ def process_study(self, study_id: str, job_id: str) -> None:
         db.commit()
     finally:
         db.close()
+
+
+def _relative_paths(paths: list[Path], base_dir: Path) -> list[Path]:
+    relative_paths = []
+    for path in paths:
+        try:
+            relative_paths.append(path.relative_to(base_dir))
+        except ValueError:
+            relative_paths.append(Path(path.name))
+    return relative_paths

@@ -10,4 +10,6 @@
 
 Si el estado es `Fallido`, avisá al administrador y no uses ese resultado.
 
-El PDF técnico lista metadatos y ficheros generados. No es un informe clínico ni visualiza NIfTI en esta fase.
+El PDF técnico lista metadatos, ficheros generados y PNG renderizados automáticamente desde outputs NIfTI mediante FSL `slicer`. No es un informe clínico validado y no debe usarse para tomar decisiones médicas sin revisión profesional.
+
+Si el estado aparece como completado con avisos, el procesamiento principal terminó pero algún NIfTI pudo no renderizarse a PNG. En ese caso revisá el PDF y avisá al administrador si faltan imágenes esperadas.
