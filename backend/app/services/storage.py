@@ -38,11 +38,17 @@ class LocalStudyStorage:
     def logs_dir(self, study_id: UUID) -> Path:
         return self.study_dir(study_id) / "logs"
 
-    def technical_report_path(self, study_id: UUID) -> Path:
-        return self.logs_dir(study_id) / "technical_report.pdf"
+    def rendered_png_dir(self, study_id: UUID) -> Path:
+        return self.output_dir(study_id) / "rendered_png"
+
+    def reports_dir(self, study_id: UUID) -> Path:
+        return self.output_dir(study_id) / "reports"
+
+    def technical_report_path(self, study_id: UUID, filename: str = "technical_report.pdf") -> Path:
+        return self.reports_dir(study_id) / filename
 
     def output_zip_path(self, study_id: UUID) -> Path:
-        return self.study_dir(study_id) / "outputs.zip"
+        return self.output_dir(study_id) / "outputs.zip"
 
     def prepare(self, study_id: UUID) -> None:
         for directory in [
@@ -50,6 +56,8 @@ class LocalStudyStorage:
             self.input_original_dir(study_id),
             self.bids_data_dir(study_id),
             self.output_dir(study_id),
+            self.rendered_png_dir(study_id),
+            self.reports_dir(study_id),
             self.logs_dir(study_id),
         ]:
             directory.mkdir(parents=True, exist_ok=True)

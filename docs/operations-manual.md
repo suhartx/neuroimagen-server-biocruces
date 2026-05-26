@@ -12,13 +12,15 @@
 
 - Logs de contenedores: `docker compose logs`.
 - Logs técnicos del procesador: `data/studies/{study_id}/logs/processor.log`.
-- PDF técnico: `data/studies/{study_id}/logs/technical_report.pdf`.
-- ZIP de outputs: `data/studies/{study_id}/outputs.zip`.
+- PNG renderizados: `data/studies/{study_id}/output/rendered_png/`.
+- PDF técnico: `data/studies/{study_id}/output/reports/technical_report.pdf`.
+- ZIP de outputs: `data/studies/{study_id}/output/outputs.zip`.
 - Outputs compneuro: `data/studies/{study_id}/output/Preproc`.
+- Log de renderizado: `data/studies/{study_id}/logs/rendering.log`.
 
 ## Incidencias
 
-Primero revisar estado en GUI, luego logs del worker, luego `processor.log`. Para `compneuro`, comprobar además que existan `output/Preproc/BET` y `output/Preproc/ProbTissue`.
+Primero revisar estado en GUI, luego logs del worker, luego `processor.log`. Para `compneuro`, comprobar además que existan `output/Preproc/BET`, `output/Preproc/ProbTissue`, `output/rendered_png/` y `logs/rendering.log`.
 
 ## Rerun
 

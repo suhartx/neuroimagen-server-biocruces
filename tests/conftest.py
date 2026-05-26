@@ -57,6 +57,7 @@ def _make_client(tmp_path, monkeypatch, **extra_env):
 
     routes.process_study = DummyTask
     with TestClient(app) as test_client:
+        test_client.app.state.testing_session_local = TestingSessionLocal
         yield test_client
     app.dependency_overrides.clear()
     get_settings.cache_clear()

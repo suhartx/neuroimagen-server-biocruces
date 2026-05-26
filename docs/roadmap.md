@@ -13,6 +13,7 @@
 - Milestone 8: logs, auditoría básica y trazabilidad.
 - Milestone 9: tests básicos y scripts de validación.
 - Milestone 10: documentación final para TFM.
+- Milestone 11: renderizado técnico de NIfTI a PNG con FSL `slicer` y PDF técnico con imágenes.
 
 ## Evolución Futura
 
@@ -33,6 +34,7 @@
 - Futuro 15: ejecutar `utils/brainmeasures.sh` después de `apreproc_launcher.sh`.
 - Futuro 16: múltiples pipelines seleccionables por estudio.
 - Futuro 17: validación BIDS formal con `bids-validator` si el coste operativo queda justificado.
+- Futuro 18: selección más fina de outputs relevantes para el PDF según criterios de revisión técnica.
 
 ## Criterio Arquitectónico
 

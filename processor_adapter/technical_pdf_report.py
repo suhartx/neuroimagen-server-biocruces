@@ -1,0 +1,288 @@
+from __future__ import annotations
+
+import html
+import struct
+import textwrap
+import zlib
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+
+from processor_adapter.nifti_renderer import RenderedNifti
+
+
+@dataclass(frozen=True)
+class TechnicalReportMetadata:
+    study_id: str
+    study_name: str
+    bids_subject_id: str | None
+    uploaded_at: datetime | None
+    processed_at: datetime | None
+    pipeline_name: str | None
+    pipeline_version: str | None
+    processor_backend: str | None
+    logical_output_path: str
+
+
+def write_technical_pdf_report(
+    pdf_path: Path,
+    *,
+    metadata: TechnicalReportMetadata,
+    rendered_outputs: list[RenderedNifti],
+    output_files: list[Path],
+    warnings: list[str] | None = None,
+) -> Path:
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    pages = [_summary_page(metadata, rendered_outputs, output_files, warnings or [])]
+    if rendered_outputs:
+        pages.extend(_artifact_page(artifact) for artifact in rendered_outputs)
+    else:
+        pages.append(
+            _text_page(
+                [
+                    "Aviso de renderizado",
+                    "No se generaron imagenes PNG a partir de los outputs NIfTI.",
+                    "El PDF se emite igualmente para dejar trazabilidad tecnica del procesamiento.",
+                ]
+            )
+        )
+    _write_pdf(pdf_path, pages)
+    return pdf_path
+
+
+def _summary_page(
+    metadata: TechnicalReportMetadata,
+    rendered_outputs: list[RenderedNifti],
+    output_files: list[Path],
+    warnings: list[str],
+) -> dict:
+    lines = [
+        "Informe tecnico de procesamiento de neuroimagen",
+        "Este documento resume los artefactos generados por el pipeline de procesamiento. No constituye un informe clinico validado.",
+        f"Nombre del estudio: {metadata.study_name}",
+        f"ID interno del estudio: {metadata.study_id}",
+        f"Sujeto BIDS: {metadata.bids_subject_id or 'n/a'}",
+        f"Fecha de subida: {_format_datetime(metadata.uploaded_at)}",
+        f"Fecha de procesamiento: {_format_datetime(metadata.processed_at)}",
+        f"Backend usado: {metadata.pipeline_name or 'n/a'}",
+        f"Version del pipeline: {metadata.pipeline_version or 'n/a'}",
+        f"Backend de plataforma: {metadata.processor_backend or 'n/a'}",
+        f"Ruta logica de outputs: {metadata.logical_output_path}",
+        "Ficheros NIfTI procesados:",
+    ]
+    nifti_outputs = [artifact.display_name for artifact in rendered_outputs]
+    if nifti_outputs:
+        lines.extend(f"- {name}" for name in nifti_outputs[:80])
+    else:
+        lines.append("- No se encontraron ficheros NIfTI renderizables en Preproc.")
+    if len(nifti_outputs) > 80:
+        lines.append(f"- ... {len(nifti_outputs) - 80} ficheros adicionales")
+    if output_files:
+        lines.append("Listado de outputs detectados:")
+        lines.extend(f"- {path.as_posix()}" for path in output_files[:80])
+        if len(output_files) > 80:
+            lines.append(f"- ... {len(output_files) - 80} ficheros adicionales")
+    failed = [artifact for artifact in rendered_outputs if not artifact.success]
+    if failed:
+        lines.append("Avisos de renderizado:")
+        lines.extend(f"- {artifact.display_name}: {artifact.error_message or 'error no especificado'}" for artifact in failed)
+    if warnings:
+        lines.append("Avisos tecnicos:")
+        lines.extend(f"- {warning}" for warning in warnings)
+    return _text_page(lines)
+
+
+def _artifact_page(artifact: RenderedNifti) -> dict:
+    lines = [f"Output NIfTI: {artifact.display_name}"]
+    if artifact.success:
+        lines.append("Render PNG generado con FSL slicer.")
+        return {"lines": lines, "image_path": artifact.png_path}
+    lines.append(f"No se pudo renderizar este fichero: {artifact.error_message or 'error no especificado'}")
+    return {"lines": lines, "image_path": None}
+
+
+def _text_page(lines: list[str]) -> dict:
+    return {"lines": lines, "image_path": None}
+
+
+def _write_pdf(path: Path, pages: list[dict]) -> None:
+    objects: list[bytes] = [b"", b"", b"3 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj"]
+    page_ids: list[int] = []
+
+    for page in pages:
+        image_ref = None
+        image_info = None
+        image_path = page.get("image_path")
+        if image_path:
+            image_info = _load_png(Path(image_path))
+            if image_info:
+                image_ref = len(objects) + 1
+                objects.append(_image_object(image_ref, image_info))
+
+        content = _page_content(page["lines"], image_ref=image_ref, image_info=image_info)
+        content_id = len(objects) + 1
+        objects.append(_stream_object(content_id, content))
+        page_id = len(objects) + 1
+        objects.append(_page_object(page_id, content_id, image_ref=image_ref))
+        page_ids.append(page_id)
+
+    objects[0] = b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj"
+    kids = " ".join(f"{page_id} 0 R" for page_id in page_ids)
+    objects[1] = f"2 0 obj<</Type/Pages/Count {len(page_ids)}/Kids[{kids}]>>endobj".encode("latin-1")
+
+    chunks = [b"%PDF-1.4\n"]
+    offsets = [0]
+    for obj in objects:
+        offsets.append(sum(len(chunk) for chunk in chunks))
+        chunks.extend([obj, b"\n"])
+    xref_offset = sum(len(chunk) for chunk in chunks)
+    xref = [f"xref\n0 {len(objects) + 1}\n", "0000000000 65535 f \n"]
+    xref.extend(f"{offset:010d} 00000 n \n" for offset in offsets[1:])
+    trailer = f"trailer<</Size {len(objects) + 1}/Root 1 0 R>>\nstartxref\n{xref_offset}\n%%EOF\n"
+    chunks.append("".join(xref).encode("latin-1"))
+    chunks.append(trailer.encode("latin-1"))
+    path.write_bytes(b"".join(chunks))
+
+
+def _page_content(lines: list[str], *, image_ref: int | None, image_info: dict | None) -> bytes:
+    commands: list[str] = []
+    y = 800
+    for index, line in enumerate(lines):
+        font_size = 15 if index == 0 else 9
+        for wrapped in textwrap.wrap(line, width=96) or [""]:
+            commands.append(f"BT /F1 {font_size} Tf 40 {y} Td ({_pdf_text(wrapped)}) Tj ET")
+            y -= 18 if index == 0 else 13
+            if y < 455:
+                break
+        if y < 455:
+            break
+    if image_ref and image_info:
+        draw_width, draw_height = _fit_image(image_info["width"], image_info["height"], 515, 360)
+        x = 40 + (515 - draw_width) / 2
+        commands.append(f"q {draw_width:.2f} 0 0 {draw_height:.2f} {x:.2f} 60 cm /Im1 Do Q")
+    return "\n".join(commands).encode("latin-1", errors="replace")
+
+
+def _stream_object(object_id: int, content: bytes) -> bytes:
+    return b"".join(
+        [
+            f"{object_id} 0 obj<</Length {len(content)}>>stream\n".encode("latin-1"),
+            content,
+            b"\nendstream endobj",
+        ]
+    )
+
+
+def _page_object(page_id: int, content_id: int, *, image_ref: int | None) -> bytes:
+    xobject = f"/XObject<</Im1 {image_ref} 0 R>>" if image_ref else ""
+    return (
+        f"{page_id} 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]"
+        f"/Resources<</Font<</F1 3 0 R>>{xobject}>>/Contents {content_id} 0 R>>endobj"
+    ).encode("latin-1")
+
+
+def _image_object(object_id: int, image_info: dict) -> bytes:
+    data = image_info["data"]
+    return b"".join(
+        [
+            (
+                f"{object_id} 0 obj<</Type/XObject/Subtype/Image/Width {image_info['width']}"
+                f"/Height {image_info['height']}/ColorSpace/{image_info['color_space']}"
+                f"/BitsPerComponent 8/Filter/FlateDecode/Length {len(data)}>>stream\n"
+            ).encode("latin-1"),
+            data,
+            b"\nendstream endobj",
+        ]
+    )
+
+
+def _load_png(path: Path) -> dict | None:
+    try:
+        raw = path.read_bytes()
+        if not raw.startswith(b"\x89PNG\r\n\x1a\n"):
+            return None
+        width = height = bit_depth = color_type = interlace = None
+        idat = bytearray()
+        cursor = 8
+        while cursor < len(raw):
+            length = struct.unpack(">I", raw[cursor : cursor + 4])[0]
+            chunk_type = raw[cursor + 4 : cursor + 8]
+            chunk_data = raw[cursor + 8 : cursor + 8 + length]
+            cursor += 12 + length
+            if chunk_type == b"IHDR":
+                width, height, bit_depth, color_type, _, _, interlace = struct.unpack(">IIBBBBB", chunk_data)
+            elif chunk_type == b"IDAT":
+                idat.extend(chunk_data)
+            elif chunk_type == b"IEND":
+                break
+        if bit_depth != 8 or interlace != 0 or color_type not in (0, 2, 6) or not width or not height:
+            return None
+        components = {0: 1, 2: 3, 6: 4}[color_type]
+        unfiltered = _unfilter_png(zlib.decompress(bytes(idat)), width, height, components)
+        if color_type == 6:
+            unfiltered = _drop_alpha(unfiltered)
+            components = 3
+        color_space = "DeviceGray" if components == 1 else "DeviceRGB"
+        return {"width": width, "height": height, "color_space": color_space, "data": zlib.compress(unfiltered)}
+    except Exception:  # pragma: no cover - PDF should still be generated without image embedding
+        return None
+
+
+def _unfilter_png(data: bytes, width: int, height: int, components: int) -> bytes:
+    stride = width * components
+    rows: list[bytes] = []
+    previous = bytearray(stride)
+    cursor = 0
+    for _ in range(height):
+        filter_type = data[cursor]
+        cursor += 1
+        row = bytearray(data[cursor : cursor + stride])
+        cursor += stride
+        for i in range(stride):
+            left = row[i - components] if i >= components else 0
+            up = previous[i]
+            upper_left = previous[i - components] if i >= components else 0
+            if filter_type == 1:
+                row[i] = (row[i] + left) & 0xFF
+            elif filter_type == 2:
+                row[i] = (row[i] + up) & 0xFF
+            elif filter_type == 3:
+                row[i] = (row[i] + ((left + up) // 2)) & 0xFF
+            elif filter_type == 4:
+                row[i] = (row[i] + _paeth(left, up, upper_left)) & 0xFF
+        rows.append(bytes(row))
+        previous = row
+    return b"".join(rows)
+
+
+def _drop_alpha(data: bytes) -> bytes:
+    result = bytearray()
+    for index in range(0, len(data), 4):
+        result.extend(data[index : index + 3])
+    return bytes(result)
+
+
+def _paeth(left: int, up: int, upper_left: int) -> int:
+    estimate = left + up - upper_left
+    distances = (abs(estimate - left), abs(estimate - up), abs(estimate - upper_left))
+    if distances[0] <= distances[1] and distances[0] <= distances[2]:
+        return left
+    if distances[1] <= distances[2]:
+        return up
+    return upper_left
+
+
+def _fit_image(width: int, height: int, max_width: int, max_height: int) -> tuple[float, float]:
+    scale = min(max_width / width, max_height / height)
+    return width * scale, height * scale
+
+
+def _format_datetime(value: datetime | None) -> str:
+    if not value:
+        return "n/a"
+    return value.isoformat(timespec="seconds")
+
+
+def _pdf_text(value: str) -> str:
+    escaped = html.unescape(value).encode("latin-1", errors="replace").decode("latin-1")
+    return escaped.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")

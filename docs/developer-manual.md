@@ -21,13 +21,17 @@ El significado de cada variable de `.env` está documentado en `docs/configurati
 - Celery en `worker/`.
 - No añadir lógica clínica al worker; usar `processor_adapter`.
 - `worker/Dockerfile.compneuro` construye el worker real sobre la imagen de `compneuro-anatproc` y añade dependencias de la plataforma.
+- El post-procesado técnico corre en el mismo worker: renderiza NIfTI con FSL `slicer`, genera PDF y empaqueta outputs.
 - La concurrencia recomendada para `compneuro` es `1`, porque el pipeline usa `/project` como ruta fija.
 
 ## Processor Adapter
 
 - `processor_adapter.adapter.DummyProcessorAdapter`: mantiene el procesador de desarrollo con PDF.
 - `processor_adapter.adapter.CompneuroAnatprocAdapter`: prepara `/project`, ejecuta `src/apreproc_launcher.sh` y valida `Preproc/BET` y `Preproc/ProbTissue`.
-- `processor_adapter.artifacts`: genera PDF técnico y ZIP de outputs.
+- `processor_adapter.nifti_renderer`: encuentra `.nii`/`.nii.gz` en `Preproc` y ejecuta `slicer input -a output.png`.
+- `processor_adapter.technical_pdf_report`: genera el PDF técnico con metadatos, listado de outputs y PNG renderizados.
+- `processor_adapter.output_packager`: genera el ZIP de outputs con rutas relativas.
+- `processor_adapter.artifacts`: puente de compatibilidad para imports existentes.
 
 ## BIDS
 

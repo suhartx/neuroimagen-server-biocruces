@@ -84,7 +84,7 @@ function App() {
           />
           <button disabled={loading}>{loading ? 'Subiendo...' : 'Enviar a procesamiento'}</button>
         </form>
-        <p className="hint">El procesamiento puede tardar entre 10 minutos y 1 hora. El PDF generado es un resumen técnico, no un informe clínico.</p>
+        <p className="hint">El procesamiento puede tardar entre 10 minutos y 1 hora. El worker renderiza outputs NIfTI a PNG con FSL slicer y genera un PDF técnico, no clínico.</p>
         {message && <p className="message">{message}</p>}
       </section>
 
@@ -109,7 +109,7 @@ function App() {
                 <tr key={study.id}>
                   <td>{study.original_filename}</td>
                   <td>{study.bids_subject_id || <span className="muted">No aplica</span>}</td>
-                  <td><Status value={study.status} error={study.error_message} /></td>
+                  <td><Status value={study.status} error={study.error_message} warnings={study.processing_warnings} /></td>
                   <td>{new Date(study.created_at).toLocaleString('es-ES')}</td>
                   <td>
                     {study.has_pdf ? (
@@ -132,7 +132,7 @@ function App() {
   );
 }
 
-function Status({ value, error }) {
+function Status({ value, error, warnings }) {
   const labels = {
     uploaded: 'Subido',
     queued: 'En cola',
@@ -141,8 +141,8 @@ function Status({ value, error }) {
     failed: 'Fallido',
   };
   return (
-    <span className={`status ${value}`} title={error || ''}>
-      {labels[value] || value}{error ? `: ${error}` : ''}
+    <span className={`status ${value}`} title={error || warnings || ''}>
+      {labels[value] || value}{error ? `: ${error}` : ''}{!error && warnings ? ' con avisos' : ''}
     </span>
   );
 }

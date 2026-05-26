@@ -35,6 +35,11 @@ El fichero `.env` no debe commitearse. Puede contener contraseñas, rutas locale
 | `MAX_CONCURRENT_PROCESSING_JOBS` | Concurrencia del worker. Para compneuro se recomienda `1`. | `1` |
 | `GENERATE_OUTPUT_ZIP` | Generar ZIP de outputs `Preproc`. | `true` |
 | `GENERATE_TECHNICAL_PDF` | Generar PDF técnico de procesamiento. | `true` |
+| `GENERATE_RENDERED_PNG` | Renderizar outputs NIfTI a PNG tras `compneuro`. | `true` |
+| `NIFTI_RENDERER` | Herramienta CLI de renderizado. En compneuro debe ser FSL `slicer`. | `slicer` |
+| `NIFTI_RENDER_MAX_FILES` | Máximo de NIfTI a renderizar por estudio. | `50` |
+| `NIFTI_RENDER_TIMEOUT_SECONDS` | Timeout por fichero renderizado. | `300` |
+| `TECHNICAL_REPORT_FILENAME` | Nombre del PDF dentro de `output/reports/`. | `technical_report.pdf` |
 | `BIDS_VALIDATE` | Reservado para validación BIDS formal futura. | `false` |
 | `CORS_ORIGINS` | Orígenes permitidos para llamadas desde navegador. | `http://localhost,http://localhost:5173` |
 
@@ -70,9 +75,13 @@ ALLOWED_EXTENSIONS=.nii.gz
 MAX_CONCURRENT_PROCESSING_JOBS=1
 GENERATE_OUTPUT_ZIP=true
 GENERATE_TECHNICAL_PDF=true
+GENERATE_RENDERED_PNG=true
+NIFTI_RENDERER=slicer
 ```
 
 La API prepara automáticamente BIDS para un único sujeto T1w. Si el sujeto se deja vacío, genera un identificador seguro. Si se informa un valor inválido, responde `400`.
+
+La carpeta local `compneuro-anatproc/` no es necesaria para ejecutar la integración. Puede existir como referencia temporal ignorada por Git, pero el flujo soportado usa la imagen Docker y `worker/Dockerfile.compneuro`.
 
 ## Seguridad Operativa
 

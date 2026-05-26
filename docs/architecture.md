@@ -16,6 +16,7 @@ flowchart TB
     Worker[Celery worker]
     Adapter[processor_adapter]
     Script[procesador externo]
+    Render[Render NIfTI a PNG con FSL slicer]
     Artifacts[PDF tecnico / ZIP]
     Storage[(data/studies filesystem)]
   end
@@ -31,11 +32,12 @@ flowchart TB
   Worker --> Adapter
   Adapter --> Script
   Script --> Storage
-  Worker --> Artifacts
+  Worker --> Render
+  Render --> Artifacts
   Artifacts --> Storage
 ```
 
-Para `compneuro-anatproc`, el servicio `worker` puede construirse con `worker/Dockerfile.compneuro`, derivado de `compneurobilbaolab/compneuro-anatproc:1.1`. No se usa Docker-in-Docker: Celery y las herramientas de neuroimagen conviven en el mismo contenedor worker.
+Para `compneuro-anatproc`, el servicio `worker` puede construirse con `worker/Dockerfile.compneuro`, derivado de `compneurobilbaolab/compneuro-anatproc:1.1`. No se usa Docker-in-Docker: Celery, el launcher externo y FSL `slicer` conviven en el mismo contenedor worker.
 
 ## Componentes
 
@@ -66,6 +68,8 @@ erDiagram
     string container_image
     text bids_path
     text preproc_output_path
+    text rendered_png_dir
+    text processing_warnings
     enum status
     datetime created_at
     datetime updated_at
@@ -131,6 +135,9 @@ flowchart LR
   Project --> Preproc[output/Preproc]
   Adapter --> Launcher[src/apreproc_launcher.sh]
   Launcher --> Preproc
-  Worker --> PDF[technical_report.pdf]
-  Worker --> ZIP[outputs.zip]
+  Worker --> PNG[output/rendered_png]
+  PNG --> PDF[output/reports/technical_report.pdf]
+  Worker --> ZIP[output/outputs.zip]
 ```
+
+No se mantiene una copia local de `compneuro-anatproc/` como dependencia del proyecto. El worker real parte de la imagen Docker publicada y, durante el build, copia únicamente los scripts versionados necesarios para ejecutar `src/apreproc_launcher.sh`.

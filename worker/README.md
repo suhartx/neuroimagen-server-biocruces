@@ -7,7 +7,8 @@ Esta carpeta contiene el proceso asíncrono Celery. Su trabajo es ejecutar proce
 - Consumir tareas desde Redis.
 - Cambiar estados de `Study` y `ProcessingJob`.
 - Invocar `processor_adapter`.
-- Guardar ruta de PDF y logs técnicos.
+- Renderizar outputs NIfTI a PNG con FSL `slicer` cuando el backend es `compneuro`.
+- Guardar ruta de PDF, ZIP, PNG y logs técnicos.
 - Marcar fallos de forma controlada.
 
 ## Estructura Del Código
@@ -23,9 +24,10 @@ Esta carpeta contiene el proceso asíncrono Celery. Su trabajo es ejecutar proce
 3. Marca el estudio como `processing`.
 4. Construye rutas `input`, `output` y `logs` con `LocalStudyStorage`.
 5. Ejecuta `ProcessorAdapter.run(...)`.
-6. Si hay PDF, marca `completed` y guarda `pdf_path`.
-7. Si falla, marca `failed` y guarda un mensaje técnico resumido.
-8. Registra eventos de auditoría.
+6. Para `compneuro`, busca NIfTI en `output/Preproc`, genera PNG, PDF técnico y ZIP si están habilitados.
+7. Si hay PDF, marca `completed` y guarda `pdf_path`.
+8. Si falla, marca `failed` y guarda un mensaje técnico resumido.
+9. Registra eventos de auditoría.
 
 ## Límite Crítico
 

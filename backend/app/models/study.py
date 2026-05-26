@@ -32,6 +32,8 @@ class Study(Base):
     container_image: Mapped[str | None] = mapped_column(String(255))
     bids_path: Mapped[str | None] = mapped_column(Text)
     preproc_output_path: Mapped[str | None] = mapped_column(Text)
+    rendered_png_dir: Mapped[str | None] = mapped_column(Text)
+    processing_warnings: Mapped[str | None] = mapped_column(Text)
     status: Mapped[StudyStatus] = mapped_column(Enum(StudyStatus), default=StudyStatus.uploaded, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
