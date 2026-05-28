@@ -25,7 +25,7 @@ El fichero `.env` no debe commitearse. Puede contener contraseñas, rutas locale
 | `PROCESSOR_NAME` | Nombre técnico del procesador configurado. | `dummy-development-processor` |
 | `PROCESSOR_VERSION` | Versión técnica del procesador configurado. | `0.1.0` |
 | `PROCESSOR_BACKEND` | Backend activo: `dummy` o `compneuro`. | `dummy` |
-| `PROCESSOR_COMMAND` | Comando CLI invocado por `processor_adapter`. | Dummy de desarrollo |
+| `PROCESSOR_COMMAND` | Plantilla de comando usada por el backend `dummy`. | Dummy de desarrollo |
 | `WORKER_DOCKERFILE` | Dockerfile usado para construir el worker. | `backend/Dockerfile` |
 | `COMPNEURO_CONTAINER_IMAGE` | Imagen base documentada para trazabilidad de compneuro. | `compneurobilbaolab/compneuro-anatproc:1.1` |
 | `COMPNEURO_ANATPROC_REF` | Commit del repo externo usado al construir el worker compneuro. | `a2f3e7c9523ed521c3f85f7dffde5ee8fb400842` |
@@ -45,7 +45,9 @@ El fichero `.env` no debe commitearse. Puede contener contraseñas, rutas locale
 
 ## `PROCESSOR_COMMAND`
 
-`PROCESSOR_COMMAND` es la frontera con el script externo de procesamiento. No hay que acoplar la API ni el worker al script clínico: el worker siempre invoca `processor_adapter`, y el adaptador ejecuta este comando.
+`PROCESSOR_COMMAND` es la plantilla de comando para el procesador de desarrollo (`PROCESSOR_BACKEND=dummy`). No hay que acoplar la API ni el worker al script externo: el worker siempre invoca `processor_adapter`, y el adaptador decide qué comando ejecutar según el backend activo.
+
+En modo `dummy`, el adaptador ejecuta `PROCESSOR_COMMAND`. En modo `compneuro`, el adaptador no usa `PROCESSOR_COMMAND` como comando principal, sino `COMPNEURO_COMMAND`.
 
 Ejemplo:
 
@@ -60,7 +62,7 @@ Placeholders disponibles:
 - `{study_id}`: identificador UUID del estudio.
 - `{logs_dir}`: directorio reservado para logs técnicos.
 
-El script configurado debe generar al menos un fichero `.pdf` dentro de `output_dir`. Si no lo hace, el procesamiento se marca como fallido.
+En modo `dummy`, el script configurado debe generar al menos un fichero `.pdf` dentro de `output_dir`. Si no lo hace, el procesamiento se marca como fallido.
 
 ## `PROCESSOR_BACKEND=compneuro`
 
@@ -78,6 +80,8 @@ GENERATE_TECHNICAL_PDF=true
 GENERATE_RENDERED_PNG=true
 NIFTI_RENDERER=slicer
 ```
+
+En este modo el comando principal es `COMPNEURO_COMMAND`, por defecto `bash /app/src/apreproc_launcher.sh`. El worker se construye sobre `compneurobilbaolab/compneuro-anatproc:1.1`, por lo que ejecuta el launcher y FSL `slicer` dentro del mismo contenedor worker.
 
 La API prepara automáticamente BIDS para un único sujeto T1w. Si el sujeto se deja vacío, genera un identificador seguro. Si se informa un valor inválido, responde `400`.
 
