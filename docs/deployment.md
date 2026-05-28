@@ -29,6 +29,8 @@ flowchart TB
 
 Para ejecutar `compneuro-anatproc`, el worker se construye con `worker/Dockerfile.compneuro`, derivado de `compneurobilbaolab/compneuro-anatproc:1.1`. Ese contenedor contiene Celery, el código de la plataforma y las herramientas de neuroimagen. No se usa Docker-in-Docker.
 
+No se arranca un contenedor `compneuro-anatproc` separado. El servicio `worker` es el contenedor que hereda esa imagen base y ejecuta directamente `src/apreproc_launcher.sh`.
+
 Variables mínimas:
 
 ```env

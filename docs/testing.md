@@ -57,3 +57,7 @@ MAX_CONCURRENT_PROCESSING_JOBS=1
 Fichero de referencia local: `compneuro-anatproc/data/sub-O01/anat/sub-O01_T1w.nii.gz`.
 
 Si esa carpeta local no existe, usar cualquier T1w `.nii.gz` anonimizado disponible. `compneuro-anatproc/` no es una dependencia permanente del proyecto; la integración real usa la imagen Docker configurada.
+
+## Prueba Manual Realizada
+
+En una prueba local con el worker compneuro reconstruido se procesó un T1w `.nii.gz` de ejemplo. El estudio terminó en estado `completed`, generó `output/Preproc`, 18 PNG en `output/rendered_png/`, `output/reports/technical_report.pdf` y `output/outputs.zip`, sin avisos de renderizado registrados.
