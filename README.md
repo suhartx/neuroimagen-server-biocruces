@@ -36,7 +36,7 @@ cp .env.example .env
 make up
 ```
 
-Abrí `http://localhost` para la GUI y `http://localhost/api/docs` para Swagger/OpenAPI.
+Abre `http://localhost` para la GUI y `http://localhost/api/docs` para Swagger/OpenAPI.
 
 ## Comandos Principales
 

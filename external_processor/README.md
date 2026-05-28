@@ -25,4 +25,4 @@ Contrato compatible:
 python external_processor/dummy_processor.py --input data/studies/<id>/input --output data/studies/<id>/output --study-id <id>
 ```
 
-Para sustituirlo por el script real, configurá `PROCESSOR_COMMAND` en `.env` manteniendo los placeholders `{input_dir}`, `{output_dir}`, `{study_id}` y opcionalmente `{logs_dir}`.
+Para sustituirlo por el script real, configura `PROCESSOR_COMMAND` en `.env` manteniendo los placeholders `{input_dir}`, `{output_dir}`, `{study_id}` y opcionalmente `{logs_dir}`.

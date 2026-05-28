@@ -27,7 +27,7 @@ function App() {
   async function handleSubmit(event) {
     event.preventDefault();
     if (!file) {
-      setMessage('Seleccioná un fichero antes de enviar.');
+      setMessage('Selecciona un fichero antes de enviar.');
       return;
     }
     const normalizedSubject = subjectId.trim();
@@ -71,7 +71,7 @@ function App() {
       <section className="card">
         <h2>Subir estudio</h2>
         <p className="hint">
-          Se espera una imagen anatómica T1w en formato <strong>.nii.gz</strong>. Indicá un identificador BIDS como <code>sub-O01</code>; si lo dejás vacío, el sistema generará uno seguro y preparará automáticamente la estructura BIDS.
+          Se espera una imagen anatómica T1w en formato <strong>.nii.gz</strong>. Indica un identificador BIDS como <code>sub-O01</code>; si lo dejas vacío, el sistema generará uno seguro y preparará automáticamente la estructura BIDS.
         </p>
         <form onSubmit={handleSubmit}>
           <input type="file" accept=".nii.gz" onChange={(event) => setFile(event.target.files?.[0] || null)} />
