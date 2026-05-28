@@ -2,6 +2,16 @@
 
 El despliegue inicial está pensado para un único servidor con Docker Compose.
 
+## Instalación Local
+
+1. Clonar o abrir el repositorio.
+2. Crear configuración local con `cp .env.example .env`.
+3. Revisar contraseñas, rutas y procesador según `docs/configuration.md`.
+4. Levantar servicios con `make up`.
+5. Acceder a la GUI en `http://localhost` o a Swagger en `http://localhost/api/docs`.
+
+No uses datos clínicos reales en esta versión inicial.
+
 ```mermaid
 flowchart TB
   Internet --> Nginx[Nginx :80]

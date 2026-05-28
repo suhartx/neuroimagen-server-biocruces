@@ -8,6 +8,20 @@
 - `make smoke`: comprobar healthcheck.
 - `make clean`: limpiar volúmenes y estudios locales.
 
+## Datos Y Backups
+
+- PostgreSQL guarda metadatos, estados y auditoría.
+- `data/studies/{study_id}` guarda input, BIDS, outputs, logs y metadata.
+- Respaldar PostgreSQL y `data/`; ambos son necesarios para reconstruir trazabilidad.
+- Hasta definir retención, los estudios y resultados se conservan indefinidamente.
+
+## Mantenimiento
+
+- Se usa versionado semántico: `MAJOR.MINOR.PATCH`.
+- Actualizar `CHANGELOG.md` en cada release.
+- Toda modificación de modelo persistente requiere migración Alembic.
+- Si cambia el procesador, actualizar variables en `.env` y reiniciar `api` y `worker`.
+
 ## Logs
 
 - Logs de contenedores: `docker compose logs`.

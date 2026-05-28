@@ -14,20 +14,16 @@ Esta carpeta contiene la documentación técnica, operativa y de defensa del TFM
 - `architecture.md`: arquitectura, componentes, ER y estados.
 - `processing-pipeline.md`: flujo API, Redis, worker, adapter, script y PDF.
 - `roadmap.md`: fases iniciales y evolución futura.
-- `installation.md`: instalación local.
 - `configuration.md`: variables de entorno y uso de `.env`.
-- `deployment.md`: despliegue con Docker Compose.
+- `deployment.md`: instalación local y despliegue con Docker Compose.
 - `user-manual.md`: manual para usuario funcional.
-- `admin-manual.md`: administración básica.
 - `developer-manual.md`: guía para desarrollo.
-- `operations-manual.md`: operación diaria.
+- `operations-manual.md`: operación diaria, administración básica y mantenimiento.
 - `security.md`: seguridad actual y pendientes.
 - `api.md`: endpoints principales.
 - `testing.md`: pruebas disponibles.
 - `ai-development-rules.md`: reglas para desarrollo asistido por IA.
-- `maintenance.md`: mantenimiento y versionado.
 - `troubleshooting.md`: incidencias habituales.
-- `next-tasks.md`: tareas pendientes próximas y mejoras de desarrollo.
 - `tfm-technical-summary.md`: resumen técnico para el TFM.
 - `agentic-workflow-audit.md`: auditoría y decisiones de configuración OpenCode/agentes.
 
