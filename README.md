@@ -4,6 +4,8 @@ Repositorio para el TFM **"Diseño e implementación de un servicio de procesami
 
 La plataforma permite subir estudios anonimizados desde una GUI web, registrar la subida, preparar una estructura BIDS por estudio, lanzar procesamiento asíncrono mediante un procesador externo tratado como caja negra, guardar estados y descargar un PDF técnico y, cuando aplica, un ZIP de outputs.
 
+El PDF generado en esta versión es un **informe técnico de artefactos de procesamiento**. No interpreta imágenes, no contiene conclusiones médicas y no constituye un informe clínico validado.
+
 ## Arquitectura Resumida
 
 ```mermaid
@@ -15,7 +17,7 @@ flowchart LR
   Redis --> Worker[Celery worker]
   Worker --> Adapter[processor_adapter]
   Adapter --> CLI[Procesador externo]
-  CLI --> Outputs[Preproc / PDF dummy]
+  CLI --> Outputs[Outputs del procesador]
   Worker --> Render[PNG con FSL slicer]
   Render --> Artifacts[PDF tecnico / ZIP]
   API --> Download[Descarga resultados]
@@ -60,19 +62,22 @@ make clean    # borrar volúmenes y estudios locales
 3. Se crea un `Study`, un `ProcessingJob` y eventos de auditoría.
 4. FastAPI encola una tarea Celery en Redis.
 5. El worker ejecuta `processor_adapter`.
-6. El adaptador invoca el comando configurado en `PROCESSOR_COMMAND`.
-7. El procesador dummy genera un PDF o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
-8. El worker detecta outputs, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
-9. La GUI permite descargar el PDF técnico y/o el ZIP.
+6. El adaptador ejecuta el comando correspondiente al backend configurado.
+7. En modo `dummy`, se usa `PROCESSOR_COMMAND`; en modo `compneuro`, se usa `COMPNEURO_COMMAND`.
+8. El procesador dummy genera un PDF de desarrollo o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
+9. El worker detecta outputs, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
+10. La GUI permite descargar el PDF técnico y/o el ZIP.
 
 ## Procesadores
 
-El backend de procesamiento se selecciona con `PROCESSOR_BACKEND`:
+El backend de procesamiento se selecciona con `PROCESSOR_BACKEND`.
 
-- `dummy`: procesador de desarrollo que genera un PDF sin validez clínica.
-- `compneuro`: integración con `compneuro-anatproc` para imagen anatómica T1w `.nii.gz`.
+| Backend | Uso | Comando ejecutado |
+| --- | --- | --- |
+| `dummy` | Desarrollo y pruebas rápidas sin pipeline real. | `PROCESSOR_COMMAND` |
+| `compneuro` | Integración real con `compneuro-anatproc` para T1w `.nii.gz`. | `COMPNEURO_COMMAND` |
 
-Para dummy se puede cambiar `.env`:
+`PROCESSOR_COMMAND` es una plantilla para el procesador de desarrollo. Permite cambiar el script dummy sin tocar FastAPI ni Celery:
 
 ```env
 PROCESSOR_COMMAND=python /app/external_processor/process.py --input {input_dir} --output {output_dir} --study-id {study_id}
@@ -80,7 +85,13 @@ PROCESSOR_COMMAND=python /app/external_processor/process.py --input {input_dir} 
 
 Placeholders disponibles: `{input_dir}`, `{output_dir}`, `{study_id}`, `{logs_dir}`.
 
-Para `compneuro`, el worker debe construirse con `WORKER_DOCKERFILE=worker/Dockerfile.compneuro` y `PROCESSOR_BACKEND=compneuro`. No se usa Docker-in-Docker: Celery corre dentro de una imagen derivada de `compneurobilbaolab/compneuro-anatproc:1.1`, ejecuta `src/apreproc_launcher.sh` y después usa FSL `slicer` para crear PNG técnicos desde los NIfTI generados.
+Para `compneuro`, el worker debe construirse con `WORKER_DOCKERFILE=worker/Dockerfile.compneuro` y `PROCESSOR_BACKEND=compneuro`. En este modo el comando relevante es:
+
+```env
+COMPNEURO_COMMAND=bash /app/src/apreproc_launcher.sh
+```
+
+No se usa Docker-in-Docker: Celery corre dentro de una imagen derivada de `compneurobilbaolab/compneuro-anatproc:1.1`, ejecuta `src/apreproc_launcher.sh` y después usa FSL `slicer` para crear PNG técnicos desde los NIfTI generados.
 
 La carpeta local `compneuro-anatproc/`, si existe en la raíz, es solo una referencia temporal ignorada por Git. La integración real usa la imagen Docker y el build versionado del worker; esa carpeta no es una dependencia permanente y puede eliminarse.
 
