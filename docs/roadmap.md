@@ -39,3 +39,12 @@
 ## Criterio Arquitectónico
 
 La prioridad es mantener una base simple, auditable y defendible. Las capacidades clínicas y hospitalarias reales requieren validación, seguridad, trazabilidad y gobierno de datos adicionales.
+
+## Próximas Tareas Técnicas
+
+- Documentar comandos alternativos para ejecutar tests y lint dentro del contenedor `api` cuando el host no tenga dependencias Python instaladas.
+- Revisar warnings de `datetime.utcnow()` y valorar migrar a fechas UTC timezone-aware.
+- Mantener la lista de extensiones permitidas alineada entre `ALLOWED_EXTENSIONS`, `docs/api.md` y `docs/security.md`.
+- Añadir consulta de datos operativos en PostgreSQL para administración local si se vuelve necesaria.
+
+Fuera de alcance por ahora: autenticación, roles, MinIO/S3, flujos de revisión clínica y modificación de scripts clínicos reales sin petición explícita.
