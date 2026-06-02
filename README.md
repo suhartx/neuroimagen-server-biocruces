@@ -46,6 +46,8 @@ Abre `http://localhost` para la GUI y `http://localhost/api/docs` para Swagger/O
 make up       # levantar servicios
 make down     # parar servicios
 make logs     # ver logs
+make frontend-rebuild # reconstruir/recrear solo el frontend Docker
+make rebuild  # reconstruir/recrear todos los servicios Docker
 make test     # ejecutar tests Python locales
 make lint     # ruff check
 make format   # ruff format
@@ -54,6 +56,8 @@ make seed     # crear fichero de prueba local
 make smoke    # comprobar healthcheck vía proxy
 make clean    # borrar volúmenes y estudios locales
 ```
+
+Cuando se modifica el frontend y se usa el despliegue Docker/Nginx, ejecuta `make frontend-rebuild` para regenerar el bundle estático y recrear el contenedor. `make down && make up` puede reutilizar una imagen anterior; `make clean` solo debe usarse si quieres borrar volúmenes y estudios locales.
 
 ## Flujo Funcional
 
