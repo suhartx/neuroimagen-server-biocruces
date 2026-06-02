@@ -113,7 +113,7 @@ function App() {
                   <td>{new Date(study.created_at).toLocaleString('es-ES')}</td>
                   <td>
                     {study.has_pdf ? (
-                      <a className="download" href={`${API_BASE}/studies/${study.id}/download/pdf`}>PDF técnico</a>
+                      <a className="download" href={`${API_BASE}/studies/${study.id}/download/pdf`}>PDF</a>
                     ) : (
                       <span className="muted">PDF no disponible</span>
                     )}

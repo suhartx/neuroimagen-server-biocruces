@@ -1,7 +1,13 @@
-.PHONY: up down logs test lint format migrate seed clean smoke check-docs check-secrets
+.PHONY: up down logs test lint format migrate seed clean smoke check-docs check-secrets frontend-rebuild rebuild
 
 up:
 	docker compose up -d
+
+frontend-rebuild:
+	docker compose up -d --build --force-recreate frontend
+
+rebuild:
+	docker compose up -d --build --force-recreate
 
 down:
 	docker compose down
