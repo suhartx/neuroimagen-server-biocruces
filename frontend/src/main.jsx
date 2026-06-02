@@ -84,7 +84,7 @@ function App() {
           />
           <button disabled={loading}>{loading ? 'Subiendo...' : 'Enviar a procesamiento'}</button>
         </form>
-        <p className="hint">El procesamiento puede tardar entre 10 minutos y 1 hora. El worker renderiza outputs NIfTI a PNG con FSL slicer y genera un PDF técnico, no clínico.</p>
+        <p className="hint">El procesamiento puede tardar entre 10 minutos y 1 hora. El worker renderiza outputs NIfTI a PNG con FSL slicer y genera un PDF.</p>
         {message && <p className="message">{message}</p>}
       </section>
 
