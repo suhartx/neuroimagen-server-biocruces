@@ -10,7 +10,7 @@ El despliegue inicial está pensado para un único servidor con Docker Compose.
 4. Levantar servicios con `make up`.
 5. Acceder a la GUI en `http://localhost` o a Swagger en `http://localhost/api/docs`.
 
-No uses datos clínicos reales en esta versión inicial.
+No uses datos reales identificativos o sensibles en esta versión inicial.
 
 ```mermaid
 flowchart TB
@@ -30,6 +30,8 @@ flowchart TB
 Para ejecutar `compneuro-anatproc`, el worker se construye con `worker/Dockerfile.compneuro`, derivado de `compneurobilbaolab/compneuro-anatproc:1.1`. Ese contenedor contiene Celery, el código de la plataforma y las herramientas de neuroimagen. No se usa Docker-in-Docker.
 
 No se arranca un contenedor `compneuro-anatproc` separado. El servicio `worker` es el contenedor que hereda esa imagen base y ejecuta directamente `src/apreproc_launcher.sh`.
+
+Si en el futuro se usa otro script o una imagen distinta, el patrón se mantiene: el servicio `worker` debe contener Celery, el código de la plataforma, las dependencias del procesador y acceso al volumen `./data:/app/data`. El nuevo comando debe configurarse por variables de entorno y respetar el contrato de outputs documentado en `docs/processing-pipeline.md`.
 
 Variables mínimas:
 

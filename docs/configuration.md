@@ -83,19 +83,42 @@ NIFTI_RENDERER=slicer
 
 En este modo el comando principal es `COMPNEURO_COMMAND`, por defecto `bash /app/src/apreproc_launcher.sh`. El worker se construye sobre `compneurobilbaolab/compneuro-anatproc:1.1`, por lo que ejecuta el launcher y FSL `slicer` dentro del mismo contenedor worker.
 
+`COMPNEURO_COMMAND` es el punto configurable para cambiar de script manteniendo el backend `compneuro`. Si el nuevo procesador requiere otras dependencias, el cambio debe acompañarse con otro `WORKER_DOCKERFILE` o con una imagen base distinta. El contenedor resultante sigue siendo el servicio `worker`: debe tener Celery, las dependencias Python de la plataforma, acceso a `/app/data` y el comando configurado disponible dentro del contenedor.
+
+Para sustituir el procesador de forma más amplia, el mantenedor debería revisar:
+
+- `PROCESSOR_BACKEND`: backend activo que selecciona el adapter.
+- `COMPNEURO_COMMAND` o el comando equivalente del nuevo backend.
+- `WORKER_DOCKERFILE`: Dockerfile que construye el worker con las herramientas necesarias.
+- `COMPNEURO_CONTAINER_IMAGE`/imagen base documentada, si se mantiene este backend.
+- contrato de outputs esperado por `worker/tasks.py` y `processor_adapter/output_packager.py`.
+
 La API prepara automáticamente BIDS para un único sujeto T1w. Si el sujeto se deja vacío, genera un identificador seguro. Si se informa un valor inválido, responde `400`.
 
 La carpeta local `compneuro-anatproc/` no es necesaria para ejecutar la integración. Puede existir como referencia temporal ignorada por Git, pero el flujo soportado usa la imagen Docker y `worker/Dockerfile.compneuro`.
+
+## Cómo Sustituir El Procesador
+
+Para cambiar la imagen Docker o usar otro script, mantené la separación entre plataforma y procesador externo:
+
+1. Crear o adaptar un Dockerfile de worker con Celery, las dependencias Python de la plataforma y las herramientas del nuevo procesador.
+2. Configurar `WORKER_DOCKERFILE` para construir ese worker.
+3. Configurar `COMPNEURO_COMMAND` si alcanza con cambiar el script dentro del backend `compneuro`, o crear un backend nuevo en `processor_adapter` si cambia el contrato.
+4. Asegurar que el comando nuevo lea los datos preparados por la plataforma y escriba resultados en la salida esperada, idealmente `output/Preproc`.
+5. Dejar que el worker genere los artefactos propios de la plataforma: `output/reports/technical_report.pdf` y `output/outputs.zip`.
+6. Reconstruir y reiniciar `worker`; reiniciar `api` si cambia configuración compartida.
+
+No debería ser necesario modificar la GUI ni los endpoints de FastAPI si el nuevo procesador respeta el contrato descrito en `docs/processing-pipeline.md`.
 
 ## Seguridad Operativa
 
 - No commitear `.env`.
 - No poner secretos reales en `.env.example`.
 - Cambiar `POSTGRES_PASSWORD` fuera de desarrollo local.
-- No usar datos clínicos reales en pruebas o ejemplos.
+- No usar datos reales identificativos o sensibles en pruebas o ejemplos.
 - Mantener `ALLOWED_EXTENSIONS` limitado a formatos esperados.
 - Revisar `MAX_UPLOAD_SIZE_MB` según capacidad de disco y política operativa.
-- Si cambia `PROCESSOR_COMMAND`, reiniciar `api` y `worker`.
+- Si cambia el comando del procesador o el Dockerfile del worker, reiniciar o reconstruir los servicios afectados.
 
 ## Relación Con Docker Compose
 

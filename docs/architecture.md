@@ -1,6 +1,6 @@
 # Arquitectura
 
-El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo clínico. El procesador externo se invoca mediante `processor_adapter` como caja negra y puede seleccionarse por configuración (`dummy` o `compneuro`).
+El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo concreto de procesamiento. El procesador externo se invoca mediante `processor_adapter` como caja negra y puede seleccionarse por configuración (`dummy` o `compneuro`).
 
 ```mermaid
 flowchart TB
@@ -40,6 +40,8 @@ flowchart TB
 Para `compneuro-anatproc`, el servicio `worker` puede construirse con `worker/Dockerfile.compneuro`, derivado de `compneurobilbaolab/compneuro-anatproc:1.1`. No se usa Docker-in-Docker: Celery, el launcher externo y FSL `slicer` conviven en el mismo contenedor worker.
 
 No existe un contenedor `compneuro-anatproc` anidado dentro del `worker`. El `worker` es una imagen derivada de `compneurobilbaolab/compneuro-anatproc:1.1`; por eso ejecuta directamente los scripts y herramientas de neuroimagen dentro del mismo contenedor.
+
+Esta decisión no obliga a usar siempre esa imagen ni ese launcher. La frontera mantenible es `processor_adapter`: un futuro procesador puede usar otro script o un worker construido desde otra imagen si respeta el contrato de entrada/salida y deja a la plataforma la trazabilidad, el PDF técnico y el ZIP descargable.
 
 ## Componentes
 
@@ -144,10 +146,12 @@ flowchart LR
 
 No se mantiene una copia local de `compneuro-anatproc/` como dependencia del proyecto. El worker real parte de la imagen Docker publicada y, durante el build, copia únicamente los scripts versionados necesarios para ejecutar `src/apreproc_launcher.sh`.
 
+Para reemplazar el procesador, no debería modificarse FastAPI ni la GUI. El punto de extensión esperado es crear o ajustar un adapter, cambiar `PROCESSOR_BACKEND`/comando, y construir un worker que incluya las herramientas necesarias.
+
 ## Decisiones Arquitectónicas
 
 - La API no ejecuta procesamiento de neuroimagen; valida, prepara datos, registra el estudio y encola la tarea.
 - Celery ejecuta el procesamiento largo fuera del ciclo HTTP para evitar bloqueos y permitir trazabilidad de estados.
-- `processor_adapter` mantiene al procesador externo como caja negra y evita acoplar FastAPI al pipeline clínico.
+- `processor_adapter` mantiene al procesador externo como caja negra y evita acoplar FastAPI al pipeline de neuroimagen concreto.
 - El post-procesado técnico se ejecuta en el mismo worker porque FSL ya está disponible y se evitan contenedores, volúmenes y sincronización adicionales.
-- El PDF generado es técnico y no contiene interpretación clínica ni conclusiones médicas.
+- El PDF generado es técnico y no contiene interpretación de imagen ni conclusiones médicas.
