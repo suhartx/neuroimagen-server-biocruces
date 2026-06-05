@@ -6,7 +6,18 @@
 - `make down`: parar servicios.
 - `make logs`: inspeccionar logs.
 - `make smoke`: comprobar healthcheck.
+- `make create-admin EMAIL=admin@example.org`: crear o actualizar el admin inicial.
 - `make clean`: limpiar volúmenes y estudios locales.
+
+## Usuarios
+
+Tras aplicar migraciones, crear el primer usuario admin:
+
+```bash
+make create-admin EMAIL=admin@example.org
+```
+
+El comando pide contraseña por consola. No hay registro público abierto; los demás usuarios se crean desde la GUI con una cuenta admin.
 
 ## Datos Y Backups
 

@@ -1,4 +1,4 @@
-.PHONY: up down logs test lint format migrate seed clean smoke check-docs check-secrets frontend-rebuild rebuild
+.PHONY: up down logs test lint format migrate seed clean smoke check-docs check-secrets frontend-rebuild rebuild create-admin
 
 up:
 	docker compose up -d
@@ -26,6 +26,10 @@ format:
 
 migrate:
 	docker compose exec api alembic upgrade head
+
+create-admin:
+	test -n "$(EMAIL)" || (echo "Uso: make create-admin EMAIL=admin@example.org"; exit 1)
+	docker compose exec api python -m app.cli.create_admin --email "$(EMAIL)"
 
 seed:
 	./scripts/seed.sh

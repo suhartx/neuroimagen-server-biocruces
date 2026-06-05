@@ -23,7 +23,12 @@ def client(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def compneuro_client(tmp_path, monkeypatch):
-    yield from _make_client(tmp_path, monkeypatch, PROCESSOR_BACKEND="compneuro", ALLOWED_EXTENSIONS=".nii.gz")
+    yield from _make_client(
+        tmp_path,
+        monkeypatch,
+        PROCESSOR_BACKEND="compneuro",
+        ALLOWED_EXTENSIONS=".nii.gz",
+    )
 
 
 def _make_client(tmp_path, monkeypatch, **extra_env):
@@ -31,11 +36,17 @@ def _make_client(tmp_path, monkeypatch, **extra_env):
     storage_path = tmp_path / "studies"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
     monkeypatch.setenv("STORAGE_ROOT", str(storage_path))
+    monkeypatch.setenv("PROCESSOR_BACKEND", "dummy")
+    monkeypatch.setenv(
+        "ALLOWED_EXTENSIONS", ".nii,.nii.gz,.dcm,.zip,.tar,.tar.gz,.gz,.json,.txt"
+    )
     for key, value in extra_env.items():
         monkeypatch.setenv(key, value)
     get_settings.cache_clear()
 
-    engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        f"sqlite:///{db_path}", connect_args={"check_same_thread": False}
+    )
     TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
     Base.metadata.create_all(bind=engine)
 

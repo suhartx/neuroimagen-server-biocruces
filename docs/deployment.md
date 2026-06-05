@@ -8,7 +8,8 @@ El despliegue inicial está pensado para un único servidor con Docker Compose.
 2. Crear configuración local con `cp .env.example .env`.
 3. Revisar contraseñas, rutas y procesador según `docs/configuration.md`.
 4. Levantar servicios con `make up`.
-5. Acceder a la GUI en `http://localhost` o a Swagger en `http://localhost/api/docs`.
+5. Crear el primer admin con `make create-admin EMAIL=admin@example.org`.
+6. Acceder a la GUI en `http://localhost` o a Swagger en `http://localhost/api/docs`.
 
 No uses datos reales identificativos o sensibles en esta versión inicial.
 
@@ -49,6 +50,7 @@ MAX_CONCURRENT_PROCESSING_JOBS=1
 ## Producción Básica
 
 - Cambiar secretos en `.env`.
+- Configurar `AUTH_SECRET_KEY` con un valor propio.
 - Revisar todas las variables descritas en `docs/configuration.md`.
 - Restringir acceso de red al servidor.
 - Añadir TLS en Nginx o Caddy.

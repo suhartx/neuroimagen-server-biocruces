@@ -54,6 +54,8 @@ services:
       TECHNICAL_REPORT_FILENAME: ${TECHNICAL_REPORT_FILENAME:-technical_report.pdf}
       BIDS_VALIDATE: ${BIDS_VALIDATE:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:5173}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-in-production}
+      AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-480}
     depends_on:
       postgres:
         condition: service_healthy

@@ -3,26 +3,109 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const TOKEN_KEY = 'neuroimagen_access_token';
 
 function App() {
+  const [token, setToken] = useState(() => window.localStorage.getItem(TOKEN_KEY) || '');
+  const [user, setUser] = useState(null);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [file, setFile] = useState(null);
   const [subjectId, setSubjectId] = useState('');
   const [studies, setStudies] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'researcher' });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
+  async function authFetch(url, options = {}) {
+    const response = await fetch(url, {
+      ...options,
+      headers: { ...authHeaders, ...(options.headers || {}) },
+    });
+    if (response.status === 401) {
+      handleLocalLogout();
+      setMessage('La sesión expiró. Volvé a iniciar sesión.');
+    }
+    return response;
+  }
+
+  async function loadCurrentUser() {
+    if (!token) return;
+    const response = await authFetch(`${API_BASE}/auth/me`);
+    if (!response.ok) {
+      return;
+    }
+    setUser(await response.json());
+  }
+
   async function loadStudies() {
-    const response = await fetch(`${API_BASE}/studies`);
+    if (!token) return;
+    const response = await authFetch(`${API_BASE}/studies`);
     if (response.ok) {
       setStudies(await response.json());
     }
   }
 
+  async function loadUsers() {
+    if (!token || user?.role !== 'admin') return;
+    const response = await authFetch(`${API_BASE}/users`);
+    if (response.ok) {
+      setUsers(await response.json());
+    }
+  }
+
   useEffect(() => {
+    if (!token) return undefined;
+    loadCurrentUser();
     loadStudies();
     const timer = window.setInterval(loadStudies, 5000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [token]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [user, token]);
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage('Iniciando sesión...');
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setLoading(false);
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo iniciar sesión.');
+      return;
+    }
+    window.localStorage.setItem(TOKEN_KEY, payload.access_token);
+    setToken(payload.access_token);
+    setUser(payload.user);
+    setLoginPassword('');
+    setMessage('Sesión iniciada.');
+  }
+
+  async function handleLogout() {
+    if (token) {
+      await authFetch(`${API_BASE}/auth/logout`, { method: 'POST' }).catch(() => null);
+    }
+    handleLocalLogout();
+  }
+
+  function handleLocalLogout() {
+    window.localStorage.removeItem(TOKEN_KEY);
+    setToken('');
+    setUser(null);
+    setStudies([]);
+    setUsers([]);
+    setMessage('');
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -42,7 +125,7 @@ function App() {
     if (normalizedSubject) {
       formData.append('bids_subject_id', normalizedSubject);
     }
-    const response = await fetch(`${API_BASE}/studies/upload`, { method: 'POST', body: formData });
+    const response = await authFetch(`${API_BASE}/studies/upload`, { method: 'POST', body: formData });
     const payload = await response.json().catch(() => ({}));
     setLoading(false);
     if (!response.ok) {
@@ -55,79 +138,178 @@ function App() {
     await loadStudies();
   }
 
+  async function handleCreateUser(event) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage('Creando usuario...');
+    const response = await authFetch(`${API_BASE}/users`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUser),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setLoading(false);
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo crear el usuario.');
+      return;
+    }
+    setNewUser({ email: '', full_name: '', password: '', role: 'researcher' });
+    setMessage(`Usuario creado: ${payload.email}`);
+    await loadUsers();
+  }
+
+  async function downloadArtifact(study, type) {
+    const response = await authFetch(`${API_BASE}/studies/${study.id}/download/${type}`);
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      setMessage(payload.detail || 'No se pudo descargar el resultado.');
+      return;
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = type === 'pdf' ? `informe-tecnico-${study.id}.pdf` : `outputs-${study.id}.zip`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="page">
       <section className="hero">
-        <p className="eyebrow">TFM - Neurorrehabilitación</p>
+        <div className="topbar">
+          <p className="eyebrow">TFM - Neurorrehabilitación</p>
+          {user && (
+            <button className="secondary light" onClick={handleLogout}>Cerrar sesión</button>
+          )}
+        </div>
         <h1>Servicio de procesamiento de neuroimagen</h1>
         <p>
           Plataforma para subir imágenes anatómicas T1w anonimizadas, ejecutar procesamiento asíncrono y descargar resultados técnicos.
         </p>
-        <div className="notice">
-          Los resultados son material de apoyo y requieren revisión clínica por personal cualificado. No introduzcas datos identificativos de pacientes.
-        </div>
+        {user ? (
+          <div className="notice">Sesión activa: {user.full_name} ({user.role === 'admin' ? 'admin' : 'researcher'}).</div>
+        ) : (
+          <div className="notice">Inicia sesión con tu cuenta institucional o de proyecto para acceder a tus estudios.</div>
+        )}
       </section>
 
-      <section className="card">
-        <h2>Subir estudio</h2>
-        <p className="hint">
-          Se espera una imagen anatómica T1w en formato <strong>.nii.gz</strong>. Indica un identificador BIDS como <code>sub-O01</code>; si lo dejas vacío, el sistema generará uno seguro y preparará automáticamente la estructura BIDS.
-        </p>
-        <form onSubmit={handleSubmit}>
-          <input type="file" accept=".nii.gz" onChange={(event) => setFile(event.target.files?.[0] || null)} />
-          <input
-            type="text"
-            value={subjectId}
-            onChange={(event) => setSubjectId(event.target.value)}
-            placeholder="sub-O01"
-            aria-label="Identificador de sujeto BIDS"
-          />
-          <button disabled={loading}>{loading ? 'Subiendo...' : 'Enviar a procesamiento'}</button>
-        </form>
-        <p className="hint">El procesamiento puede tardar entre 10 minutos y 1 hora. El worker renderiza outputs NIfTI a PNG con FSL slicer y genera un PDF.</p>
-        {message && <p className="message">{message}</p>}
-      </section>
+      {!user ? (
+        <section className="card auth-card">
+          <h2>Login</h2>
+          <form onSubmit={handleLogin}>
+            <input type="email" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} placeholder="email@institucion.org" required />
+            <input type="password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="Contraseña" required />
+            <button disabled={loading}>{loading ? 'Entrando...' : 'Entrar'}</button>
+          </form>
+          <p className="hint">Los usuarios se crean desde administración. No hay registro público abierto.</p>
+          {message && <p className="message">{message}</p>}
+        </section>
+      ) : (
+        <>
+          <section className="card">
+            <h2>Subir estudio</h2>
+            <p className="hint">
+              Se espera una imagen anatómica T1w en formato <strong>.nii.gz</strong>. Indica un identificador BIDS como <code>sub-O01</code>; si lo dejas vacío, el sistema generará uno seguro.
+            </p>
+            <form onSubmit={handleSubmit}>
+              <input type="file" accept=".nii.gz" onChange={(event) => setFile(event.target.files?.[0] || null)} />
+              <input
+                type="text"
+                value={subjectId}
+                onChange={(event) => setSubjectId(event.target.value)}
+                placeholder="sub-O01"
+                aria-label="Identificador de sujeto BIDS"
+              />
+              <button disabled={loading}>{loading ? 'Trabajando...' : 'Enviar a procesamiento'}</button>
+            </form>
+            <p className="hint">El procesamiento puede tardar entre 10 minutos y 1 hora.</p>
+            {message && <p className="message">{message}</p>}
+          </section>
 
-      <section className="card">
-        <div className="section-title">
-          <h2>Estudios registrados</h2>
-          <button className="secondary" onClick={loadStudies}>Actualizar</button>
-        </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Fichero</th>
-                <th>Sujeto</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-                <th>Resultados</th>
-              </tr>
-            </thead>
-            <tbody>
-              {studies.map((study) => (
-                <tr key={study.id}>
-                  <td>{study.original_filename}</td>
-                  <td>{study.bids_subject_id || <span className="muted">No aplica</span>}</td>
-                  <td><Status value={study.status} error={study.error_message} warnings={study.processing_warnings} /></td>
-                  <td>{new Date(study.created_at).toLocaleString('es-ES')}</td>
-                  <td>
-                    {study.has_pdf ? (
-                      <a className="download" href={`${API_BASE}/studies/${study.id}/download/pdf`}>PDF</a>
-                    ) : (
-                      <span className="muted">PDF no disponible</span>
-                    )}
-                    {study.has_output_zip && <a className="download secondary-download" href={`${API_BASE}/studies/${study.id}/download/zip`}>ZIP outputs</a>}
-                  </td>
-                </tr>
-              ))}
-              {studies.length === 0 && (
-                <tr><td colSpan="5" className="muted">Todavía no hay estudios registrados.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+          <section className="card">
+            <div className="section-title">
+              <h2>{user.role === 'admin' ? 'Estudios registrados' : 'Mis estudios'}</h2>
+              <button className="secondary" onClick={loadStudies}>Actualizar</button>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fichero</th>
+                    <th>Sujeto</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th>Resultados</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studies.map((study) => (
+                    <tr key={study.id}>
+                      <td>{study.original_filename}</td>
+                      <td>{study.bids_subject_id || <span className="muted">No aplica</span>}</td>
+                      <td><Status value={study.status} error={study.error_message} warnings={study.processing_warnings} /></td>
+                      <td>{new Date(study.created_at).toLocaleString('es-ES')}</td>
+                      <td>
+                        {study.has_pdf ? (
+                          <button className="download" onClick={() => downloadArtifact(study, 'pdf')}>PDF</button>
+                        ) : (
+                          <span className="muted">PDF no disponible</span>
+                        )}
+                        {study.has_output_zip && <button className="download secondary-download" onClick={() => downloadArtifact(study, 'zip')}>ZIP outputs</button>}
+                      </td>
+                    </tr>
+                  ))}
+                  {studies.length === 0 && (
+                    <tr><td colSpan="5" className="muted">Todavía no hay estudios registrados.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {user.role === 'admin' && (
+            <section className="card">
+              <div className="section-title">
+                <h2>Gestión básica de usuarios</h2>
+                <button className="secondary" onClick={loadUsers}>Actualizar usuarios</button>
+              </div>
+              <form onSubmit={handleCreateUser}>
+                <input type="email" value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} placeholder="email@institucion.org" required />
+                <input type="text" value={newUser.full_name} onChange={(event) => setNewUser({ ...newUser, full_name: event.target.value })} placeholder="Nombre completo" required />
+                <input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} placeholder="Contraseña inicial" required />
+                <select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
+                  <option value="researcher">researcher</option>
+                  <option value="admin">admin</option>
+                </select>
+                <button disabled={loading}>Crear usuario</button>
+              </form>
+              <div className="table-wrap small-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Email</th>
+                      <th>Nombre</th>
+                      <th>Rol</th>
+                      <th>Activo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.email}</td>
+                        <td>{item.full_name}</td>
+                        <td>{item.role}</td>
+                        <td>{item.is_active ? 'Sí' : 'No'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+        </>
+      )}
     </main>
   );
 }

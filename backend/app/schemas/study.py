@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 class StudyRead(BaseModel):
     id: UUID
+    owner_user_id: UUID
     original_filename: str
     status: str
     created_at: datetime

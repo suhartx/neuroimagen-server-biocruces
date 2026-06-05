@@ -49,6 +49,13 @@ body {
   background: rgba(255,255,255,.12);
 }
 
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .card {
   margin-top: 24px;
   padding: 24px;
@@ -71,7 +78,7 @@ input[type="file"] {
   padding: 12px;
 }
 
-input[type="text"] {
+input[type="text"], input[type="email"], input[type="password"], select {
   flex: 0 1 180px;
   border: 1px solid #c6d6df;
   border-radius: 12px;
@@ -91,6 +98,11 @@ button, .download {
   display: inline-block;
 }
 
+.download {
+  font: inherit;
+  font-size: .92rem;
+}
+
 button:disabled {
   opacity: .55;
   cursor: wait;
@@ -99,6 +111,12 @@ button:disabled {
 .secondary {
   background: #e6f0f4;
   color: #12324a;
+}
+
+.light {
+  background: rgba(255,255,255,.18);
+  color: white;
+  border: 1px solid rgba(255,255,255,.32);
 }
 
 .section-title {
@@ -134,6 +152,10 @@ code {
   overflow-x: auto;
 }
 
+.small-table {
+  margin-top: 18px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -162,4 +184,5 @@ th, td {
 @media (max-width: 720px) {
   .hero, .card { padding: 22px; border-radius: 18px; }
   .section-title { align-items: flex-start; flex-direction: column; }
+  .topbar { align-items: flex-start; flex-direction: column; }
 }

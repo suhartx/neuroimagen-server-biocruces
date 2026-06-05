@@ -7,6 +7,8 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.models.processing_job import ProcessingJob
 from app.models.study import Study, StudyStatus
+from app.models.user import User, UserRole
+from app.services.auth import hash_password
 from worker.tasks import process_study
 
 
@@ -22,10 +24,16 @@ def test_worker_marks_study_failed_when_script_fails(tmp_path, monkeypatch):
     script = "external_processor/dummy_processor.py"
     monkeypatch.setenv("STORAGE_ROOT", str(storage_root))
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
-    monkeypatch.setenv("PROCESSOR_COMMAND", f"python {script} --input {{input_dir}} --output {{output_dir}} --study-id {{study_id}} --sleep 0 --fail")
+    monkeypatch.setenv("PROCESSOR_BACKEND", "dummy")
+    monkeypatch.setenv(
+        "PROCESSOR_COMMAND",
+        f"python {script} --input {{input_dir}} --output {{output_dir}} --study-id {{study_id}} --sleep 0 --fail",
+    )
     get_settings.cache_clear()
 
-    engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        f"sqlite:///{db_path}", connect_args={"check_same_thread": False}
+    )
     TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
     Base.metadata.create_all(bind=engine)
 
@@ -34,9 +42,21 @@ def test_worker_marks_study_failed_when_script_fails(tmp_path, monkeypatch):
     monkeypatch.setattr(tasks, "SessionLocal", TestingSessionLocal)
 
     db = TestingSessionLocal()
+    owner_id = uuid4()
+    db.add(
+        User(
+            id=owner_id,
+            email="worker-owner@example.org",
+            full_name="Worker Owner",
+            hashed_password=hash_password("secret-pass"),
+            role=UserRole.researcher.value,
+            is_active=True,
+        )
+    )
     db.add(
         Study(
             id=study_id,
+            owner_user_id=owner_id,
             original_filename="study.nii",
             stored_path=str(input_dir / "study.nii"),
             output_path=str(storage_root / str(study_id) / "output"),

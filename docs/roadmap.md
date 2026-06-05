@@ -4,9 +4,9 @@ Este roadmap ordena la evolución funcional de la plataforma desde el estado act
 
 ## Estado Del Proyecto
 
-La plataforma actual permite subir un estudio T1w `.nii.gz`, preparar BIDS, encolar procesamiento con Celery/Redis, ejecutar el worker `compneuro`, renderizar NIfTI a PNG con FSL `slicer`, generar artefactos técnicos y descargar resultados.
+La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos y descarga de resultados según permisos.
 
-Todavía no existen usuarios, login, roles, permisos por propietario, compartición, notificaciones, borrado controlado, retención automática ni dashboard administrativo.
+Todavía no existen compartición, notificaciones, borrado controlado, retención automática, logs visibles, retry, cancelación de jobs ni dashboard administrativo completo.
 
 ## Roadmap de evolución funcional
 
@@ -31,6 +31,8 @@ Criterios de aceptación ya cubiertos:
 - `make test`, `make lint`, `make check-docs` y `make check-secrets` son los controles principales del proyecto.
 
 ### Fase 1 — Multiusuario Básico
+
+Estado: implementada como base funcional.
 
 Objetivo: introducir identidad, propiedad de estudios y permisos mínimos sin cambiar el pipeline de procesamiento.
 
@@ -359,30 +361,31 @@ Criterios de aceptación:
 
 ## Priorización Recomendada
 
-La próxima fase óptima es **Fase 1 — Multiusuario Básico**.
+La próxima fase óptima es **Fase 2 — Gestión de jobs y trazabilidad**.
 
 Justificación:
 
-- Es la base para historial, permisos, sharing, auditoría, borrado seguro y administración.
-- Sin usuarios no hay separación de estudios.
-- Sin owner por estudio no se puede hacer historial correcto ni permisos.
-- Es mejor resolver identidad y autorización antes que notificaciones, cuotas, sharing o dashboard avanzado.
+- La Fase 1 ya establece identidad, roles, propietario por estudio e historial básico.
+- La siguiente necesidad operativa es controlar mejor errores, logs, cancelación en cola, retry y borrado seguro.
+- Fase 2 desbloquea dashboard admin útil, retención y sharing con auditoría real.
+- Conviene resolver trazabilidad de jobs antes que notificaciones, cuotas o integración institucional.
 
 Orden óptimo de implementación tras cerrar este roadmap:
 
-1. Fase 1: identidad, roles, owner y permisos.
-2. Fase 2: jobs, logs, cancelación queued, retry y borrado seguro.
-3. Fase 3: dashboard admin básico.
-4. Fase 4: backups y restore local.
-5. Fase 5: sharing seguro.
-6. Fase 6: notificaciones.
-7. Fase 7: multiple upload y batches.
-8. Fase 8: retención, cuotas y almacenamiento.
-9. Fase 9: pipelines configurables.
-10. Fase 10: integración institucional.
-11. Fase 11: revisión clínica.
+1. Fase 2: jobs, logs, cancelación queued, retry y borrado seguro.
+2. Fase 3: dashboard admin básico.
+3. Fase 4: backups y restore local.
+4. Fase 5: sharing seguro.
+5. Fase 6: notificaciones.
+6. Fase 7: multiple upload y batches.
+7. Fase 8: retención, cuotas y almacenamiento.
+8. Fase 9: pipelines configurables.
+9. Fase 10: integración institucional.
+10. Fase 11: revisión clínica.
 
 ## Plan Técnico De Fase 1
+
+Estado: implementado como primera versión. Se conserva esta sección como trazabilidad del alcance construido.
 
 ### Backend
 
@@ -440,8 +443,7 @@ Cambios sugeridos en `AuditEvent`:
 - No guardar passwords en texto plano.
 - Usar hashing robusto.
 - No exponer errores de login detallados.
-- Usar sesiones o JWT con expiración.
-- Documentar la decisión cookie/JWT antes de implementarla.
+- Usar JWT con expiración.
 - Preparar compatibilidad futura con Google/OIDC.
 - Preparar dominios institucionales permitidos como configuración futura.
 - No habilitar registro público abierto en la primera implementación.
@@ -488,11 +490,9 @@ Cambios sugeridos en `AuditEvent`:
 - Cuotas.
 - Anonimización DICOM real.
 
-## Decisiones Pendientes Antes De Fase 1
+## Decisiones Pendientes Tras Fase 1
 
-- Elegir cookie session o JWT simple.
-- Definir cómo se crea el primer admin.
-- Definir si `AuditEvent.actor` se conserva como compatibilidad o se reemplaza gradualmente por `actor_user_id`.
+- Evaluar si conviene migrar de JWT en localStorage a cookie `HttpOnly` antes de exposición real.
+- Definir si `AuditEvent.actor` textual se conserva como compatibilidad o se elimina en una migración futura.
 - Definir permisos exactos para cancelar y borrar jobs.
-- Definir texto de errores de login y expiración de sesión.
 - Decidir si el usuario `system` es visible en dashboard admin.

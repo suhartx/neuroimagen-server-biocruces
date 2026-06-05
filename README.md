@@ -36,6 +36,7 @@ flowchart LR
 ```bash
 cp .env.example .env
 make up
+make create-admin EMAIL=admin@example.org
 ```
 
 Abre `http://localhost` para la GUI y `http://localhost/api/docs` para Swagger/OpenAPI.
@@ -52,6 +53,7 @@ make test     # ejecutar tests Python locales
 make lint     # ruff check
 make format   # ruff format
 make migrate  # aplicar migraciones en el contenedor api
+make create-admin EMAIL=admin@example.org # crear/actualizar admin inicial
 make seed     # crear fichero de prueba local
 make smoke    # comprobar healthcheck vía proxy
 make clean    # borrar volúmenes y estudios locales
@@ -61,16 +63,17 @@ Cuando se modifica el frontend y se usa el despliegue Docker/Nginx, ejecuta `mak
 
 ## Flujo Funcional
 
-1. El usuario sube un fichero desde la GUI.
-2. FastAPI valida extensión, sanitiza nombre y guarda el fichero en `data/studies/{study_id}/input`.
-3. Se crea un `Study`, un `ProcessingJob` y eventos de auditoría.
-4. FastAPI encola una tarea Celery en Redis.
-5. El worker ejecuta `processor_adapter`.
-6. El adaptador ejecuta el comando correspondiente al backend configurado.
-7. En modo `dummy`, se usa `PROCESSOR_COMMAND`; en modo `compneuro`, se usa `COMPNEURO_COMMAND`.
-8. El procesador dummy genera un PDF de desarrollo o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
-9. El worker detecta outputs, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
-10. La GUI permite descargar el PDF técnico y/o el ZIP.
+1. El usuario inicia sesión con login local.
+2. El usuario sube un fichero desde la GUI.
+3. FastAPI valida permisos, extensión, sanitiza nombre y guarda el fichero en `data/studies/{study_id}/input`.
+4. Se crea un `Study` con propietario, un `ProcessingJob` y eventos de auditoría.
+5. FastAPI encola una tarea Celery en Redis.
+6. El worker ejecuta `processor_adapter`.
+7. El adaptador ejecuta el comando correspondiente al backend configurado.
+8. En modo `dummy`, se usa `PROCESSOR_COMMAND`; en modo `compneuro`, se usa `COMPNEURO_COMMAND`.
+9. El procesador dummy genera un PDF de desarrollo o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
+10. El worker detecta outputs, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
+11. La GUI permite descargar el PDF técnico y/o el ZIP si el usuario tiene permiso.
 
 ## Procesadores
 
@@ -116,9 +119,8 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 
 ## Limitaciones Iniciales
 
-- Sin usuarios ni login.
 - Sin anonimización DICOM integrada.
-- Sin roles ni revisión clínica formal.
+- Sin revisión clínica formal.
 - Sin retención automática de datos.
 - Sin compartición de informes mediante enlaces firmados.
 - Sin notificaciones por email.
@@ -130,6 +132,6 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 
 ## Roadmap
 
-El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La siguiente fase recomendada es **Fase 1 — Multiusuario básico**: login local, usuarios creados por admin, roles `admin`/`researcher`, propietario por estudio, historial por usuario, protección de endpoints y auditoría mínima.
+El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La siguiente fase recomendada es **Fase 2 — Gestión de jobs y trazabilidad**: estados más detallados, logs visibles con truncado, cancelación de jobs en cola, retry de jobs fallidos y borrado seguro.
 
 Quedan para fases posteriores: Google/OIDC, ORCID, compartición mediante enlaces firmados, notificaciones, múltiples subidas, retención automática, cuotas, pipelines configurables avanzados e integración institucional.

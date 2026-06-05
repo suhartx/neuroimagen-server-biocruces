@@ -53,21 +53,25 @@ El significado de cada variable de `.env` está documentado en `docs/configurati
 - Actualizar docs si cambia arquitectura, API, despliegue o pipeline.
 - Documentar cambios de tooling frontend cuando afecten instalación, lint o estructura de componentes.
 
-## Próxima Fase Recomendada: Multiusuario Básico
+## Multiusuario Básico
 
-La siguiente implementación funcional debería introducir login local, roles `admin`/`researcher`, propietario por estudio e historial por usuario. No conviene empezar por Google, ORCID, sharing, email, cuotas o pipelines configurables avanzados porque todos dependen de identidad y permisos.
+La plataforma incluye login local con JWT, roles `admin`/`researcher`, propietario por estudio e historial filtrado por permisos.
 
-Orden técnico sugerido:
+Puntos principales:
 
-1. Crear modelo `User` y migración Alembic.
-2. Definir creación del primer admin.
-3. Implementar hashing de contraseña y login local.
-4. Implementar sesión o JWT con expiración y documentar la elección.
-5. Añadir `owner_user_id` a `Study` y migrar estudios existentes a usuario `system` o admin.
-6. Proteger endpoints y aplicar filtros por propietario.
-7. Ampliar auditoría con `actor_user_id`.
-8. Adaptar frontend a login, sesión y “Mis estudios”.
-9. Añadir tests de permisos antes de continuar con dashboard, sharing o borrado.
+- `backend/app/models/user.py`: modelo `User`, roles y usuario `system`.
+- `backend/app/services/auth.py`: hash PBKDF2, JWT, dependencias de usuario actual y admin.
+- `backend/app/cli/create_admin.py`: creación o actualización del admin inicial.
+- `backend/alembic/versions/0004_multiuser_auth.py`: tabla `users`, `owner_user_id` y `actor_user_id`.
+- `frontend/src/main.jsx`: login, sesión, “Mis estudios” y gestión básica de usuarios admin.
+
+Crear el primer admin:
+
+```bash
+make create-admin EMAIL=admin@example.org
+```
+
+La siguiente fase recomendada es gestión de jobs y trazabilidad: logs visibles con truncado, cancelación de jobs en cola, retry de fallidos y borrado seguro.
 
 Permisos mínimos esperados:
 

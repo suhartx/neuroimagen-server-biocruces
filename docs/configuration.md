@@ -42,6 +42,20 @@ El fichero `.env` no debe commitearse. Puede contener contraseñas, rutas locale
 | `TECHNICAL_REPORT_FILENAME` | Nombre del PDF dentro de `output/reports/`. | `technical_report.pdf` |
 | `BIDS_VALIDATE` | Reservado para validación BIDS formal futura. | `false` |
 | `CORS_ORIGINS` | Orígenes permitidos para llamadas desde navegador. | `http://localhost,http://localhost:5173` |
+| `AUTH_SECRET_KEY` | Clave HMAC para firmar tokens JWT. Debe cambiarse fuera de desarrollo. | `change-me-in-production` |
+| `AUTH_ACCESS_TOKEN_EXPIRE_MINUTES` | Duración del access token local. | `480` |
+
+## Usuario Admin Inicial
+
+No hay registro público abierto. Tras aplicar migraciones, crear o actualizar el primer admin con:
+
+```bash
+make create-admin EMAIL=admin@example.org
+```
+
+El comando solicita la contraseña por consola y ejecuta `python -m app.cli.create_admin` dentro del contenedor `api`.
+
+La autenticación local usa JWT firmado con `AUTH_SECRET_KEY`. En desarrollo existe un valor por defecto, pero en cualquier entorno compartido debe configurarse una clave propia y no commitearla. La API rechaza arrancar fuera de `development` si la clave sigue siendo el valor por defecto o es demasiado corta.
 
 ## `PROCESSOR_COMMAND`
 
