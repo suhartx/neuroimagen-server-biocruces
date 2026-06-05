@@ -2,8 +2,10 @@ from pathlib import Path
 from uuid import UUID
 
 from app.models.audit_event import AuditEvent
+from app.models.processing_job import ProcessingJob
 from app.models.study import Study, StudyStatus
 from app.models.user import User, UserRole
+from app.schemas.admin import AdminServiceHealth
 from app.services.auth import hash_password, normalize_email
 
 
@@ -363,6 +365,74 @@ def test_researcher_cannot_create_users(client):
         },
         headers=headers,
     )
+
+    assert response.status_code == 403
+
+
+def test_admin_dashboard_returns_operational_summary(client, monkeypatch):
+    import app.api.routes as routes
+
+    monkeypatch.setattr(
+        routes,
+        "_redis_health",
+        lambda settings: AdminServiceHealth(name="Redis", status="ok"),
+    )
+    monkeypatch.setattr(
+        routes,
+        "_worker_health",
+        lambda: AdminServiceHealth(name="Worker", status="ok"),
+    )
+    researcher_headers, _ = auth_headers(
+        client, "researcher@example.org", "secret-pass"
+    )
+    admin_headers, _ = auth_headers(
+        client, "admin@example.org", "secret-pass", role=UserRole.admin.value
+    )
+    queued = client.post(
+        "/api/studies/upload",
+        files={"file": ("queued.nii", b"dummy image", "application/octet-stream")},
+        headers=researcher_headers,
+    ).json()
+    failed = client.post(
+        "/api/studies/upload",
+        files={"file": ("failed.nii", b"dummy image", "application/octet-stream")},
+        headers=researcher_headers,
+    ).json()
+
+    db = client.app.state.testing_session_local()
+    failed_study = db.get(Study, UUID(failed["id"]))
+    failed_study.status = StudyStatus.failed
+    failed_job = (
+        db.query(ProcessingJob)
+        .filter(ProcessingJob.study_id == UUID(failed["id"]))
+        .one()
+    )
+    failed_job.status = StudyStatus.failed.value
+    db.commit()
+    db.close()
+
+    response = client.get("/api/admin/dashboard", headers=admin_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["queue"]["queued"] == 1
+    assert payload["queue"]["failed"] == 1
+    assert payload["queue"]["active"] == 1
+    assert payload["studies_by_status"]["queued"] == 1
+    assert payload["studies_by_status"]["failed"] == 1
+    assert payload["users"]["admins"] == 1
+    assert payload["users"]["researchers"] == 1
+    assert payload["storage"]["exists"] is True
+    assert payload["storage"]["studies_bytes"] > 0
+    assert payload["recent_failed_jobs"][0]["study_id"] == failed["id"]
+    assert "Hay 1 job(s) fallidos que requieren revisión" in payload["alerts"]
+    assert UUID(queued["id"])
+
+
+def test_researcher_cannot_access_admin_dashboard(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+
+    response = client.get("/api/admin/dashboard", headers=headers)
 
     assert response.status_code == 403
 

@@ -135,6 +135,7 @@ La API aplica autenticación y autorización antes de operar sobre estudios. El 
 Reglas implementadas:
 
 - `admin` puede ver todos los estudios y crear usuarios.
+- `admin` puede consultar el dashboard operativo global con cola, jobs, uso de disco, healthchecks, usuarios y estudios por estado.
 - `researcher` puede subir estudios, ver historial propio y descargar resultados propios.
 - Los usuarios iniciales se crean por admin; no hay registro público abierto.
 - El usuario admin inicial se crea con `make create-admin EMAIL=...`.
@@ -144,7 +145,7 @@ Evolución posterior:
 
 - Un rol `viewer` completo no entra en la primera implementación. La compartición futura debería resolverse con enlaces firmados, caducidad, revocación y auditoría.
 - Google/OIDC y ORCID deben vincularse a usuarios internos existentes o aprovisionados, sin sustituir el modelo de permisos propio.
-- `deleted_at` y soft delete quedan para la fase de gestión de jobs y trazabilidad.
+- Backups, restore local y mantenimiento operativo quedan para una fase posterior.
 
 ## Estados
 

@@ -132,6 +132,6 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 
 ## Roadmap
 
-El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La siguiente fase recomendada es **Fase 3 — Admin dashboard**: estado de cola, jobs activos/fallidos, uso de disco, healthchecks, usuarios y estudios por estado.
+El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La **Fase 3 — Admin dashboard** ya añade visibilidad operativa para administradores: estado de cola, jobs activos/fallidos, uso de disco, healthchecks, usuarios y estudios por estado. La siguiente fase recomendada es **Fase 4 — Backups y mantenimiento**.
 
 Quedan para fases posteriores: Google/OIDC, ORCID, compartición mediante enlaces firmados, notificaciones, múltiples subidas, retención automática, cuotas, pipelines configurables avanzados e integración institucional.

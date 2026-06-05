@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import shutil
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from datetime import datetime
-
+import redis
 from fastapi import (
     APIRouter,
     Depends,
@@ -17,7 +18,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -26,6 +27,13 @@ from app.db.session import get_db
 from app.models.processing_job import ProcessingJob
 from app.models.study import Study, StudyStatus
 from app.models.user import User, UserRole
+from app.schemas.admin import (
+    AdminDashboardRead,
+    AdminQueueSummary,
+    AdminServiceHealth,
+    AdminStorageSummary,
+    AdminUserSummary,
+)
 from app.schemas.auth import (
     LoginRequest,
     LogoutResponse,
@@ -71,6 +79,50 @@ router = APIRouter()
 @router.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@router.get("/admin/dashboard", response_model=AdminDashboardRead)
+def admin_dashboard(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> AdminDashboardRead:
+    studies_by_status = _count_by(db, Study.status, Study.deleted_at.is_(None))
+    jobs_by_status = _count_by(db, ProcessingJob.status)
+    queue = AdminQueueSummary(
+        queued=jobs_by_status.get(StudyStatus.queued.value, 0),
+        processing=jobs_by_status.get(StudyStatus.processing.value, 0),
+        failed=jobs_by_status.get(StudyStatus.failed.value, 0),
+    )
+    queue.active = queue.queued + queue.processing
+    users = _user_summary(db)
+    studies_bytes = db.scalar(
+        select(func.coalesce(func.sum(Study.file_size), 0)).where(
+            Study.deleted_at.is_(None)
+        )
+    )
+    storage = _storage_summary(settings.storage_root, int(studies_bytes or 0))
+    services = _service_health(db, settings)
+    recent_failed_jobs = db.scalars(
+        select(ProcessingJob)
+        .where(ProcessingJob.status == StudyStatus.failed.value)
+        .order_by(ProcessingJob.queued_at.desc())
+        .limit(5)
+    ).all()
+    alerts = _dashboard_alerts(queue, storage, services)
+    return AdminDashboardRead(
+        generated_at=datetime.utcnow(),
+        queue=queue,
+        users=users,
+        studies_by_status=studies_by_status,
+        jobs_by_status=jobs_by_status,
+        storage=storage,
+        services=services,
+        recent_failed_jobs=[
+            ProcessingJobRead.model_validate(job) for job in recent_failed_jobs
+        ],
+        alerts=alerts,
+    )
 
 
 @router.post("/auth/login", response_model=TokenResponse)
@@ -652,3 +704,136 @@ def _read_last_lines(path: Path, lines: int) -> tuple[str, bool]:
     all_lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     truncated = len(all_lines) > lines
     return "\n".join(all_lines[-lines:]), truncated
+
+
+def _count_by(db: Session, column, *conditions) -> dict[str, int]:
+    query = select(column, func.count()).group_by(column)
+    for condition in conditions:
+        query = query.where(condition)
+    return {_status_key(value): count for value, count in db.execute(query).all()}
+
+
+def _status_key(value) -> str:
+    return value.value if hasattr(value, "value") else str(value)
+
+
+def _user_summary(db: Session) -> AdminUserSummary:
+    total = db.scalar(select(func.count()).select_from(User)) or 0
+    active = (
+        db.scalar(
+            select(func.count()).select_from(User).where(User.is_active.is_(True))
+        )
+        or 0
+    )
+    admins = (
+        db.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(User.role == UserRole.admin.value)
+        )
+        or 0
+    )
+    researchers = (
+        db.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(User.role == UserRole.researcher.value)
+        )
+        or 0
+    )
+    return AdminUserSummary(
+        total=total, active=active, admins=admins, researchers=researchers
+    )
+
+
+def _storage_summary(root: Path, studies_bytes: int) -> AdminStorageSummary:
+    root = Path(root)
+    exists = root.exists()
+    disk_path = root if exists else root.parent
+    while not disk_path.exists() and disk_path != disk_path.parent:
+        disk_path = disk_path.parent
+    try:
+        usage = shutil.disk_usage(disk_path)
+    except OSError:
+        disk_total = disk_used = disk_free = 0
+    else:
+        disk_total = usage.total
+        disk_used = usage.used
+        disk_free = usage.free
+    return AdminStorageSummary(
+        root=str(root),
+        exists=exists,
+        studies_bytes=studies_bytes,
+        disk_total_bytes=disk_total,
+        disk_used_bytes=disk_used,
+        disk_free_bytes=disk_free,
+    )
+
+
+def _service_health(db: Session, settings: Settings) -> list[AdminServiceHealth]:
+    return [
+        _database_health(db),
+        _redis_health(settings),
+        _worker_health(),
+    ]
+
+
+def _database_health(db: Session) -> AdminServiceHealth:
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:
+        return AdminServiceHealth(name="PostgreSQL", status="down", detail=str(exc))
+    return AdminServiceHealth(name="PostgreSQL", status="ok")
+
+
+def _redis_health(settings: Settings) -> AdminServiceHealth:
+    broker_url = settings.celery_broker_url
+    if not broker_url.startswith(("redis://", "rediss://")):
+        return AdminServiceHealth(
+            name="Redis", status="unknown", detail="Broker no Redis en este entorno"
+        )
+    try:
+        client = redis.Redis.from_url(
+            broker_url, socket_connect_timeout=0.5, socket_timeout=0.5
+        )
+        client.ping()
+    except Exception as exc:
+        return AdminServiceHealth(name="Redis", status="down", detail=str(exc))
+    return AdminServiceHealth(name="Redis", status="ok")
+
+
+def _worker_health() -> AdminServiceHealth:
+    try:
+        from worker.celery_app import celery_app
+
+        responses = celery_app.control.inspect(timeout=0.5).ping()
+    except Exception as exc:
+        return AdminServiceHealth(name="Worker", status="down", detail=str(exc))
+    if not responses:
+        return AdminServiceHealth(
+            name="Worker", status="warning", detail="Sin respuesta de workers Celery"
+        )
+    return AdminServiceHealth(
+        name="Worker", status="ok", detail=f"{len(responses)} worker(s)"
+    )
+
+
+def _dashboard_alerts(
+    queue: AdminQueueSummary,
+    storage: AdminStorageSummary,
+    services: list[AdminServiceHealth],
+) -> list[str]:
+    alerts = []
+    if queue.failed:
+        alerts.append(f"Hay {queue.failed} job(s) fallidos que requieren revisión")
+    if queue.queued:
+        alerts.append(f"Hay {queue.queued} job(s) esperando en cola")
+    if (
+        storage.disk_total_bytes
+        and storage.disk_free_bytes / storage.disk_total_bytes < 0.1
+    ):
+        alerts.append("Queda menos del 10% de disco libre")
+    for service in services:
+        if service.status in {"down", "warning"}:
+            alerts.append(f"{service.name}: {service.detail or service.status}")
+    return alerts

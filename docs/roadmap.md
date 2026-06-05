@@ -116,6 +116,8 @@ Criterios de aceptación:
 
 Objetivo: dar al administrador visibilidad operativa mínima.
 
+Estado implementado: dashboard básico accesible solo para `admin` mediante la GUI y `GET /api/admin/dashboard`.
+
 Alcance recomendado:
 
 - Estado de cola.
@@ -363,26 +365,25 @@ Criterios de aceptación:
 
 ## Priorización Recomendada
 
-La próxima fase óptima es **Fase 3 — Admin Dashboard**.
+La próxima fase óptima es **Fase 4 — Backups Y Mantenimiento**.
 
 Justificación:
 
 - La Fase 1 ya establece identidad, roles, propietario por estudio e historial básico.
 - La Fase 2 ya añade detalle de job, logs truncados, cancelación queued, retry y borrado seguro.
-- El siguiente salto natural es visibilidad operativa global para admin.
-- Conviene construir dashboard antes que notificaciones, cuotas o integración institucional.
+- La Fase 3 ya aporta visibilidad operativa global para admin.
+- Conviene asegurar backup y restore local antes que sharing, notificaciones o integración institucional.
 
 Orden óptimo de implementación tras cerrar este roadmap:
 
-1. Fase 3: dashboard admin básico.
-2. Fase 4: backups y restore local.
-3. Fase 5: sharing seguro.
-4. Fase 6: notificaciones.
-5. Fase 7: multiple upload y batches.
-6. Fase 8: retención, cuotas y almacenamiento.
-7. Fase 9: pipelines configurables.
-8. Fase 10: integración institucional.
-9. Fase 11: revisión clínica.
+1. Fase 4: backups y restore local.
+2. Fase 5: sharing seguro.
+3. Fase 6: notificaciones.
+4. Fase 7: multiple upload y batches.
+5. Fase 8: retención, cuotas y almacenamiento.
+6. Fase 9: pipelines configurables.
+7. Fase 10: integración institucional.
+8. Fase 11: revisión clínica.
 
 ## Plan Técnico De Fase 1
 

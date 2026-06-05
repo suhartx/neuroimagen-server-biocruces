@@ -41,6 +41,11 @@ body {
   font-weight: 700;
 }
 
+.dark {
+  color: #166f8f;
+  margin: 0 0 4px;
+}
+
 .notice {
   margin-top: 22px;
   padding: 14px 16px;
@@ -187,6 +192,92 @@ code {
   overflow-wrap: anywhere;
 }
 
+.admin-dashboard {
+  border: 1px solid #d8e7ee;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.metric-card {
+  border-radius: 18px;
+  background: #f4f9fb;
+  padding: 16px;
+}
+
+.metric-card span {
+  display: block;
+  color: #667085;
+  font-weight: 700;
+}
+
+.metric-card strong {
+  display: block;
+  margin-top: 8px;
+  color: #12324a;
+  font-size: 1.8rem;
+}
+
+.metric-card.danger {
+  background: #fee2e2;
+}
+
+.dashboard-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.service-list,
+.breakdown-list {
+  display: grid;
+  gap: 10px;
+}
+
+.service-item,
+.breakdown-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e6eef2;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.service-item {
+  justify-content: flex-start;
+}
+
+.service-item p {
+  margin: 3px 0 0;
+  color: #667085;
+}
+
+.service-dot {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.service-dot.ok { background: #16a34a; }
+.service-dot.warning { background: #f59e0b; }
+.service-dot.down { background: #dc2626; }
+.service-dot.unknown { background: #94a3b8; }
+
+.alert-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #7a5200;
+}
+
 .log-block pre {
   max-height: 360px;
   overflow: auto;
@@ -220,10 +311,12 @@ th, td {
 .processing { color: #075985; background: #e0f2fe; }
 .completed { color: #166534; background: #dcfce7; }
 .failed { color: #991b1b; background: #fee2e2; }
+.canceled { color: #475467; background: #e5e7eb; }
 .muted { color: #667085; }
 
 @media (max-width: 720px) {
   .hero, .card { padding: 22px; border-radius: 18px; }
   .section-title { align-items: flex-start; flex-direction: column; }
   .topbar { align-items: flex-start; flex-direction: column; }
+  .metric-grid, .dashboard-columns { grid-template-columns: 1fr; }
 }

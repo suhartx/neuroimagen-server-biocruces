@@ -14,6 +14,7 @@ function App() {
   const [subjectId, setSubjectId] = useState('');
   const [studies, setStudies] = useState([]);
   const [users, setUsers] = useState([]);
+  const [adminDashboard, setAdminDashboard] = useState(null);
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [selectedLogs, setSelectedLogs] = useState(null);
   const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'researcher' });
@@ -59,6 +60,14 @@ function App() {
     }
   }
 
+  async function loadAdminDashboard() {
+    if (!token || user?.role !== 'admin') return;
+    const response = await authFetch(`${API_BASE}/admin/dashboard`);
+    if (response.ok) {
+      setAdminDashboard(await response.json());
+    }
+  }
+
   useEffect(() => {
     if (!token) return undefined;
     loadCurrentUser();
@@ -69,6 +78,13 @@ function App() {
 
   useEffect(() => {
     loadUsers();
+    loadAdminDashboard();
+  }, [user, token]);
+
+  useEffect(() => {
+    if (!token || user?.role !== 'admin') return undefined;
+    const timer = window.setInterval(loadAdminDashboard, 10000);
+    return () => window.clearInterval(timer);
   }, [user, token]);
 
   async function handleLogin(event) {
@@ -106,6 +122,7 @@ function App() {
     setUser(null);
     setStudies([]);
     setUsers([]);
+    setAdminDashboard(null);
     setMessage('');
   }
 
@@ -138,6 +155,7 @@ function App() {
     setSubjectId('');
     setMessage(payload.message || 'Estudio encolado.');
     await loadStudies();
+    await loadAdminDashboard();
   }
 
   async function handleCreateUser(event) {
@@ -158,6 +176,7 @@ function App() {
     setNewUser({ email: '', full_name: '', password: '', role: 'researcher' });
     setMessage(`Usuario creado: ${payload.email}`);
     await loadUsers();
+    await loadAdminDashboard();
   }
 
   async function downloadArtifact(study, type) {
@@ -217,6 +236,7 @@ function App() {
     setSelectedDetail(null);
     setSelectedLogs(null);
     await loadStudies();
+    await loadAdminDashboard();
   }
 
   return (
@@ -271,6 +291,63 @@ function App() {
             <p className="hint">El procesamiento puede tardar entre 10 minutos y 1 hora.</p>
             {message && <p className="message">{message}</p>}
           </section>
+
+          {user.role === 'admin' && adminDashboard && (
+            <section className="card admin-dashboard">
+              <div className="section-title">
+                <div>
+                  <p className="eyebrow dark">Panel operativo</p>
+                  <h2>Dashboard de administración</h2>
+                </div>
+                <button className="secondary" onClick={loadAdminDashboard}>Actualizar dashboard</button>
+              </div>
+
+              <div className="metric-grid">
+                <MetricCard label="En cola" value={adminDashboard.queue.queued} />
+                <MetricCard label="Procesando" value={adminDashboard.queue.processing} />
+                <MetricCard label="Fallidos" value={adminDashboard.queue.failed} tone={adminDashboard.queue.failed ? 'danger' : ''} />
+                <MetricCard label="Usuarios activos" value={`${adminDashboard.users.active}/${adminDashboard.users.total}`} />
+                <MetricCard label="Estudios" value={sumValues(adminDashboard.studies_by_status)} />
+                <MetricCard label="Subidas registradas" value={formatBytes(adminDashboard.storage.studies_bytes)} />
+              </div>
+
+              <div className="dashboard-columns">
+                <div>
+                  <h3>Servicios</h3>
+                  <div className="service-list">
+                    {adminDashboard.services.map((service) => (
+                      <ServiceStatus key={service.name} service={service} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3>Alertas básicas</h3>
+                  {adminDashboard.alerts.length === 0 ? (
+                    <p className="muted">Sin alertas operativas.</p>
+                  ) : (
+                    <ul className="alert-list">
+                      {adminDashboard.alerts.map((alert) => <li key={alert}>{alert}</li>)}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              <div className="dashboard-columns">
+                <div>
+                  <h3>Estudios por estado</h3>
+                  <StatusBreakdown values={adminDashboard.studies_by_status} />
+                </div>
+                <div>
+                  <h3>Jobs por estado</h3>
+                  <StatusBreakdown values={adminDashboard.jobs_by_status} />
+                </div>
+              </div>
+
+              <p className="hint">
+                Última actualización: {new Date(adminDashboard.generated_at).toLocaleString('es-ES')}. Disco libre: {formatBytes(adminDashboard.storage.disk_free_bytes)}.
+              </p>
+            </section>
+          )}
 
           <section className="card">
             <div className="section-title">
@@ -434,12 +511,66 @@ function Status({ value, error, warnings }) {
     processing: 'Procesando',
     completed: 'Completado',
     failed: 'Fallido',
+    canceled: 'Cancelado',
   };
   return (
     <span className={`status ${value}`} title={error || warnings || ''}>
       {labels[value] || value}{error ? `: ${error}` : ''}{!error && warnings ? ' con avisos' : ''}
     </span>
   );
+}
+
+function MetricCard({ label, value, tone = '' }) {
+  return (
+    <article className={`metric-card ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </article>
+  );
+}
+
+function ServiceStatus({ service }) {
+  const label = service.status === 'ok' ? 'Operativo' : service.status === 'warning' ? 'Aviso' : service.status === 'unknown' ? 'No verificable' : 'Caído';
+  return (
+    <div className="service-item">
+      <span className={`service-dot ${service.status}`} />
+      <div>
+        <strong>{service.name}</strong>
+        <p>{label}{service.detail ? `: ${service.detail}` : ''}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatusBreakdown({ values }) {
+  const entries = Object.entries(values || {});
+  if (entries.length === 0) return <p className="muted">Sin datos todavía.</p>;
+  return (
+    <div className="breakdown-list">
+      {entries.map(([status, count]) => (
+        <div key={status}>
+          <Status value={status} />
+          <strong>{count}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function sumValues(values) {
+  return Object.values(values || {}).reduce((total, value) => total + value, 0);
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
