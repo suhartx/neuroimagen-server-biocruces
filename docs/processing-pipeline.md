@@ -55,12 +55,12 @@ Salida:
 - mensaje de error.
 - duración.
 
-El adaptador es la frontera estable entre la plataforma y cualquier procesador externo. La API, la GUI y la cola no deben depender del script concreto ni de la imagen Docker usada para procesar. Si en el futuro se sustituye `compneuro-anatproc`, el cambio debería concentrarse en el adapter, la configuración y, si hace falta, el Dockerfile del worker.
+El adaptador es la frontera estable entre la plataforma y cualquier procesador externo. La API, la GUI y la cola no deben depender del script concreto ni de la imagen Docker usada para procesar. Si en el futuro se sustituye `compneuro-anatproc`, el cambio debe concentrarse en el adapter, la configuración y, si hace falta, el Dockerfile del worker.
 
 El adaptador elige el comando según `PROCESSOR_BACKEND`. El backend `dummy` ejecuta `PROCESSOR_COMMAND` con placeholders:
 
 ```env
-PROCESSOR_COMMAND=python /app/external_processor/process.py --input {input_dir} --output {output_dir} --study-id {study_id}
+PROCESSOR_COMMAND=python /app/external_processor/dummy_processor.py --input {input_dir} --output {output_dir} --study-id {study_id}
 ```
 
 El adaptador valida entrada, crea salida, captura stdout/stderr y guarda logs. En `dummy` comprueba que se genere al menos un PDF. En `compneuro` ejecuta `COMPNEURO_COMMAND`, por defecto `bash /app/src/apreproc_launcher.sh`, comprueba exit code `0` y valida que existan `Preproc/BET` y `Preproc/ProbTissue`.

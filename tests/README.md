@@ -1,22 +1,24 @@
 # Tests
 
-Esta carpeta contiene pruebas automatizadas básicas. No busca cubrir todo el sistema, sino validar los puntos de mayor riesgo de la primera versión.
+Esta carpeta contiene pruebas automatizadas básicas. No busca cubrir todo el sistema, sino validar los puntos de mayor riesgo: permisos, subida, cola, adapter, worker y artefactos técnicos.
 
 ## Responsabilidad
 
-- Verificar que la API responde.
-- Verificar que se puede crear un estudio mediante subida.
-- Verificar que se rechazan extensiones no permitidas.
-- Verificar que el adaptador detecta PDFs generados.
-- Verificar que el adaptador informa fallos del script externo.
+- Verificar autenticación local, roles y permisos por propietario.
+- Verificar subida, validación de extensiones y BIDS básico.
+- Verificar detalle de jobs, logs truncados, cancelación de jobs en cola, retry y borrado.
+- Verificar dashboard admin y bloqueo para `researcher`.
+- Verificar adapter dummy/compneuro simulado y errores controlados.
+- Verificar renderizado/artefactos técnicos sin ejecutar FSL real.
 - Verificar que el worker marca `failed` si el procesador falla.
 
 ## Estructura Del Código
 
 - `conftest.py`: configura fixtures de pytest, base SQLite temporal y cliente FastAPI.
-- `test_api.py`: prueba healthcheck, subida y validación de extensión.
+- `test_api.py`: prueba auth, permisos, estudios, jobs, dashboard, descargas y acciones.
+- `test_bids.py`: prueba preparación BIDS y sujeto seguro.
 - `test_processor_adapter.py`: prueba el contrato del adaptador con el dummy y escenarios de error.
-- `test_worker.py`: prueba transición a fallo en el worker cuando el comando externo falla.
+- `test_worker.py`: prueba transiciones principales del worker ante éxito/error simulado.
 
 ## Ejecución
 

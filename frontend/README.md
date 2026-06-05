@@ -12,11 +12,12 @@ Esta carpeta contiene la GUI web sencilla en castellano. Está implementada con 
 - Mostrar detalle de jobs y logs truncados.
 - Permitir cancelar jobs en cola, reintentar fallidos y borrar estudios permitidos.
 - Permitir gestión básica de usuarios para admin.
-- Mostrar advertencias de uso clínico responsable.
+- Mostrar dashboard operativo para admin.
+- Mostrar advertencias de uso responsable del PDF técnico.
 
 ## Estructura Del Código
 
-- `src/main.jsx`: contiene la aplicación React principal. Gestiona login, token, subida del fichero, consulta periódica de estudios, descarga autenticada y usuarios admin.
+- `src/main.jsx`: contiene la aplicación React principal. Gestiona login, token, subida del fichero, consulta periódica de estudios, dashboard admin, descarga autenticada y usuarios admin.
 - `src/styles.css`: define el estilo visual de la interfaz.
 - `index.html`: punto de entrada HTML de Vite.
 - `package.json`: scripts y dependencias frontend.
@@ -32,7 +33,7 @@ npm install
 npm run lint
 ```
 
-`src/main.jsx` concentra los componentes actuales de la GUI (`App` y `Status`). Si la interfaz crece, separar componentes solo cuando mejore claramente la legibilidad o reutilización.
+`src/main.jsx` concentra los componentes actuales de la GUI. Si la interfaz crece, separar componentes solo cuando mejore claramente la legibilidad o reutilización.
 
 ## Flujo En La UI
 
@@ -42,9 +43,10 @@ npm run lint
 4. La UI envía `POST /api/studies/upload` con `FormData` y `Authorization: Bearer`.
 5. La UI refresca el listado de estudios permitido para el usuario.
 6. Cada 5 segundos consulta `/api/studies` para actualizar estados.
-7. La tabla permite ver detalle/logs y ejecutar acciones según estado del estudio.
-8. Si `has_pdf` o `has_output_zip` es verdadero, descarga con `fetch` autenticado.
+7. Si el usuario es `admin`, consulta `/api/admin/dashboard` y lo refresca periódicamente.
+8. La tabla permite ver detalle/logs y ejecutar acciones según estado del estudio.
+9. Si `has_pdf` o `has_output_zip` es verdadero, descarga con `fetch` autenticado.
 
 ## Criterio De Diseño
 
-La interfaz es deliberadamente simple. Incluye login local, historial por usuario, gestión básica de jobs y creación básica de usuarios admin. No incluye sharing, notificaciones, revisión clínica ni flujos hospitalarios futuros.
+La interfaz es deliberadamente simple. Incluye login local, historial por usuario, gestión básica de jobs, dashboard operativo y creación básica de usuarios admin. No incluye sharing, notificaciones, revisión médica ni flujos hospitalarios futuros.

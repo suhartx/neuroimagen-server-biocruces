@@ -143,7 +143,7 @@ Reglas implementadas:
 
 Evolución posterior:
 
-- Un rol `viewer` completo no entra en la primera implementación. La compartición futura debería resolverse con enlaces firmados, caducidad, revocación y auditoría.
+- Un rol `viewer` completo no entra en la implementación actual. La compartición futura debe resolverse con enlaces firmados, caducidad, revocación y auditoría.
 - Google/OIDC y ORCID deben vincularse a usuarios internos existentes o aprovisionados, sin sustituir el modelo de permisos propio.
 - Backups, restore local y mantenimiento operativo quedan para una fase posterior.
 
@@ -186,7 +186,7 @@ flowchart LR
 
 No se mantiene una copia local de `compneuro-anatproc/` como dependencia del proyecto. El worker real parte de la imagen Docker publicada y, durante el build, copia únicamente los scripts versionados necesarios para ejecutar `src/apreproc_launcher.sh`.
 
-Para reemplazar el procesador, no debería modificarse FastAPI ni la GUI. El punto de extensión esperado es crear o ajustar un adapter, cambiar `PROCESSOR_BACKEND`/comando, y construir un worker que incluya las herramientas necesarias.
+Para reemplazar el procesador, no hace falta modificar FastAPI ni la GUI si se mantiene el contrato. El punto de extensión esperado es crear o ajustar un adapter, cambiar `PROCESSOR_BACKEND`/comando, y construir un worker que incluya las herramientas necesarias.
 
 ## Decisiones Arquitectónicas
 

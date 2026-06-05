@@ -4,9 +4,9 @@ Este roadmap ordena la evolución funcional de la plataforma desde el estado act
 
 ## Estado Del Proyecto
 
-La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos y descarga de resultados según permisos.
+La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos, descarga de resultados según permisos, gestión básica de jobs y dashboard operativo para admin.
 
-Todavía no existen compartición, notificaciones, borrado controlado, retención automática, logs visibles, retry, cancelación de jobs ni dashboard administrativo completo.
+Todavía no existen compartición segura mediante enlaces, notificaciones, backups/restore automatizados, retención automática, cuotas, pipelines seleccionables desde GUI ni revisión clínica formal.
 
 ## Roadmap de evolución funcional
 
@@ -36,7 +36,7 @@ Estado: implementada como base funcional.
 
 Objetivo: introducir identidad, propiedad de estudios y permisos mínimos sin cambiar el pipeline de procesamiento.
 
-Alcance recomendado:
+Alcance implementado:
 
 - Login local.
 - Usuarios creados por admin; sin registro público abierto.
@@ -81,7 +81,7 @@ Estado: implementada como base funcional.
 
 Objetivo: mejorar control operativo de jobs sin introducir todavía administración avanzada.
 
-Alcance recomendado:
+Alcance implementado:
 
 - Estados de job más detallados, sin porcentajes falsos.
 - Logs visibles en GUI con truncado.
@@ -118,7 +118,7 @@ Objetivo: dar al administrador visibilidad operativa mínima.
 
 Estado implementado: dashboard básico accesible solo para `admin` mediante la GUI y `GET /api/admin/dashboard`.
 
-Alcance recomendado:
+Alcance implementado:
 
 - Estado de cola.
 - Jobs activos y fallidos.
@@ -370,7 +370,7 @@ La próxima fase óptima es **Fase 4 — Backups Y Mantenimiento**.
 Justificación:
 
 - La Fase 1 ya establece identidad, roles, propietario por estudio e historial básico.
-- La Fase 2 ya añade detalle de job, logs truncados, cancelación queued, retry y borrado seguro.
+- La Fase 2 ya añade detalle de job, logs truncados, cancelación de jobs en cola, retry y borrado seguro.
 - La Fase 3 ya aporta visibilidad operativa global para admin.
 - Conviene asegurar backup y restore local antes que sharing, notificaciones o integración institucional.
 
@@ -385,97 +385,15 @@ Orden óptimo de implementación tras cerrar este roadmap:
 7. Fase 10: integración institucional.
 8. Fase 11: revisión clínica.
 
-## Plan Técnico De Fase 1
+## Histórico Implementado
 
-Estado: implementado como primera versión. Se conserva esta sección como trazabilidad del alcance construido.
+Las fases 1, 2 y 3 ya están implementadas como base funcional:
 
-### Backend
+- Fase 1: login local, roles `admin`/`researcher`, propietario por estudio, creación de usuarios por admin y permisos por endpoint.
+- Fase 2: detalle de jobs, logs truncados, cancelación de jobs en cola, retry de fallidos, soft delete, borrado físico controlado y auditoría mínima.
+- Fase 3: dashboard admin con cola, jobs activos/fallidos, uso de disco, healthchecks, usuarios, estudios por estado y alertas no bloqueantes.
 
-- Crear modelo `User`.
-- Implementar password hashing robusto.
-- Implementar login local.
-- Implementar logout.
-- Implementar endpoint de usuario actual.
-- Implementar roles `admin` y `researcher`.
-- Añadir owner en `Study` mediante `owner_user_id`.
-- Proteger endpoints de subida, listado, detalle, estado y descarga.
-- Migrar estudios existentes a usuario `system` o admin inicial.
-- Crear o ampliar `AuditEvent` para login, upload y download con `actor_user_id`.
-- Añadir tests de permisos.
-
-### Frontend
-
-- Crear página de login.
-- Mantener estado de sesión.
-- Mostrar sección “Mis estudios”.
-- Ocultar estudios ajenos a usuarios `researcher`.
-- Mostrar vista admin básica si el usuario es `admin`.
-- Mantener mensajes en castellano.
-
-### Base De Datos
-
-Modelo `User` sugerido:
-
-- `id`
-- `email`
-- `full_name`
-- `hashed_password`
-- `role`
-- `is_active`
-- `created_at`
-- `updated_at`
-- `last_login_at`
-
-Cambios sugeridos en `Study`:
-
-- `owner_user_id`
-- `deleted_at` opcional futuro.
-
-Cambios sugeridos en `AuditEvent`:
-
-- `actor_user_id`
-- `event_type`
-- `study_id`
-- `timestamp`
-- `ip_address` opcional.
-- `details`
-
-### Seguridad
-
-- No guardar passwords en texto plano.
-- Usar hashing robusto.
-- No exponer errores de login detallados.
-- Usar JWT con expiración.
-- Preparar compatibilidad futura con Google/OIDC.
-- Preparar dominios institucionales permitidos como configuración futura.
-- No habilitar registro público abierto en la primera implementación.
-
-### Tests Mínimos
-
-- Crear usuario admin inicial.
-- Login correcto.
-- Login incorrecto.
-- `researcher` solo ve sus estudios.
-- `admin` ve todos los estudios.
-- Usuario no autenticado no accede a endpoints protegidos.
-- Propietario puede ver y descargar su estudio.
-- Usuario no propietario no puede ver ni descargar estudio ajeno.
-- Audit event en login.
-- Audit event en upload.
-- Migración de estudios existentes a usuario `system` o admin.
-
-### Criterios De Aceptación
-
-- Existe login local funcional.
-- Existe al menos un usuario admin inicial.
-- Los estudios tienen propietario.
-- Los usuarios `researcher` solo ven sus propios estudios.
-- `admin` ve todos los estudios.
-- Los endpoints sensibles están protegidos.
-- La GUI muestra historial por usuario.
-- La documentación explica cómo crear usuarios y cómo funcionan roles/permisos.
-- Tests básicos pasan.
-- Se mantiene compatibilidad técnica con el pipeline `compneuro`.
+Los detalles técnicos vivos están en `docs/architecture.md`, `docs/api.md`, `docs/developer-manual.md` y los tests.
 
 ## No Implementar Todavía
 
@@ -492,9 +410,9 @@ Cambios sugeridos en `AuditEvent`:
 - Cuotas.
 - Anonimización DICOM real.
 
-## Decisiones Pendientes Tras Fase 1
+## Decisiones Pendientes
 
 - Evaluar si conviene migrar de JWT en localStorage a cookie `HttpOnly` antes de exposición real.
 - Definir si `AuditEvent.actor` textual se conserva como compatibilidad o se elimina en una migración futura.
-- Definir permisos exactos para cancelar y borrar jobs.
-- Decidir si el usuario `system` es visible en dashboard admin.
+- Decidir si el usuario `system` debe ocultarse del dashboard admin.
+- Definir política de backups, restore y retención antes de usar datos sensibles.

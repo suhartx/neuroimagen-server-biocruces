@@ -30,7 +30,7 @@ El borrado elimina físicamente los ficheros asociados y deja auditoría mínima
 ## Usuarios Y Roles
 
 - `researcher`: puede subir estudios, ver su historial propio y descargar resultados propios.
-- `admin`: puede ver todos los estudios y crear usuarios desde la GUI.
+- `admin`: puede ver todos los estudios, crear usuarios y consultar el dashboard operativo desde la GUI.
 
 No hay registro público abierto. Los usuarios se crean desde una cuenta admin.
 
@@ -43,5 +43,7 @@ make create-admin EMAIL=admin@example.org
 ```
 
 Después, el admin puede crear usuarios `researcher` o `admin` desde la GUI.
+
+El dashboard admin muestra cola, jobs fallidos, servicios, uso de disco, usuarios y estudios por estado. Sirve para diagnóstico operativo; no sustituye la revisión de logs si un procesamiento falla.
 
 Quedan para fases posteriores la compartición mediante enlaces, notificaciones por email, subida múltiple, retención automática y revisión clínica formal.

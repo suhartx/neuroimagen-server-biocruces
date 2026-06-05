@@ -31,4 +31,4 @@ Esta carpeta contiene el proceso asíncrono Celery. Su trabajo es ejecutar proce
 
 ## Límite Crítico
 
-El worker no debe implementar lógica clínica. Solo coordina ejecución, estados, logs y persistencia. La caja negra clínica entra por `processor_adapter`.
+El worker no debe implementar análisis de imagen ni interpretación médica. Solo coordina ejecución, estados, logs y persistencia. El procesador externo entra por `processor_adapter`.

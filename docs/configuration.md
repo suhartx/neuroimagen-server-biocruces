@@ -66,7 +66,7 @@ En modo `dummy`, el adaptador ejecuta `PROCESSOR_COMMAND`. En modo `compneuro`, 
 Ejemplo:
 
 ```env
-PROCESSOR_COMMAND=python /app/external_processor/process.py --input {input_dir} --output {output_dir} --study-id {study_id}
+PROCESSOR_COMMAND=python /app/external_processor/dummy_processor.py --input {input_dir} --output {output_dir} --study-id {study_id}
 ```
 
 Placeholders disponibles:
@@ -99,7 +99,7 @@ En este modo el comando principal es `COMPNEURO_COMMAND`, por defecto `bash /app
 
 `COMPNEURO_COMMAND` es el punto configurable para cambiar de script manteniendo el backend `compneuro`. Si el nuevo procesador requiere otras dependencias, el cambio debe acompañarse con otro `WORKER_DOCKERFILE` o con una imagen base distinta. El contenedor resultante sigue siendo el servicio `worker`: debe tener Celery, las dependencias Python de la plataforma, acceso a `/app/data` y el comando configurado disponible dentro del contenedor.
 
-Para sustituir el procesador de forma más amplia, el mantenedor debería revisar:
+Para sustituir el procesador de forma más amplia, revisar:
 
 - `PROCESSOR_BACKEND`: backend activo que selecciona el adapter.
 - `COMPNEURO_COMMAND` o el comando equivalente del nuevo backend.
@@ -122,7 +122,7 @@ Para cambiar la imagen Docker o usar otro script, mantené la separación entre 
 5. Dejar que el worker genere los artefactos propios de la plataforma: `output/reports/technical_report.pdf` y `output/outputs.zip`.
 6. Reconstruir y reiniciar `worker`; reiniciar `api` si cambia configuración compartida.
 
-No debería ser necesario modificar la GUI ni los endpoints de FastAPI si el nuevo procesador respeta el contrato descrito en `docs/processing-pipeline.md`.
+No hace falta modificar la GUI ni los endpoints de FastAPI si el nuevo procesador respeta el contrato descrito en `docs/processing-pipeline.md`.
 
 ## Seguridad Operativa
 

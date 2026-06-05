@@ -17,6 +17,9 @@
 - Propietario por estudio mediante `owner_user_id`.
 - Protección de endpoints de estudios y descargas.
 - Auditoría de login, upload y download con usuario actor cuando aplica.
+- Logs visibles en GUI con truncado.
+- Cancelación de jobs en cola, retry de fallidos y borrado controlado con auditoría mínima.
+- Dashboard admin protegido por rol.
 
 Extensiones aceptadas por defecto: `.nii`, `.nii.gz`, `.dcm`, `.zip`, `.tar`, `.tar.gz`, `.gz`, `.json` y `.txt`.
 
@@ -29,7 +32,7 @@ La lista se configura mediante `ALLOWED_EXTENSIONS` y debe mantenerse alineada c
 
 ## Roadmap De Seguridad
 
-La Fase 1 resuelve identidad local y permisos básicos. La siguiente mejora de seguridad debe centrarse en trazabilidad operativa: logs visibles con truncado, cancelación controlada, soft delete, borrado físico auditado y eventos de auditoría ampliados.
+La identidad local, permisos básicos, trazabilidad de jobs y dashboard admin ya están implementados como base de TFM. Las siguientes mejoras de seguridad deben centrarse en operación y exposición real: backups/restore verificables, retención, TLS, hardening de host/contenedores y una política de sesión más robusta si el sistema se comparte fuera de un entorno controlado.
 
 ### Autenticación Local Y Roles
 
@@ -62,7 +65,7 @@ Permisos esperados:
 - Google/OIDC queda como mejora futura para usuarios institucionales y debe poder convivir con login local.
 - ORCID queda como mejora futura si el uso investigador gana peso.
 - La restricción por dominio institucional debe configurarse por entorno, no hardcodearse.
-- El rol `viewer` completo queda fuera de la primera fase; para compartir informes se recomiendan enlaces firmados temporales con revocación y auditoría.
+- El rol `viewer` completo queda fuera de la implementación actual; para compartir informes se recomiendan enlaces firmados temporales con revocación y auditoría.
 - 2FA queda fuera por ahora.
 
 ### Datos Y Descargas

@@ -14,12 +14,14 @@ Esta carpeta contiene la API HTTP del sistema. Está implementada con FastAPI y 
 - Encolar el procesamiento asíncrono.
 - Descargar el PDF cuando el worker lo haya generado.
 - Crear usuarios desde admin y permitir la creación del admin inicial por CLI.
-- Exponer detalle de jobs, logs truncados, cancelación queued, retry de fallidos y borrado seguro.
+- Exponer detalle de jobs, logs truncados, cancelación de jobs en cola, retry de fallidos y borrado seguro.
+- Exponer dashboard admin con métricas agregadas, healthchecks y alertas básicas.
 
 ## Estructura Del Código
 
 - `app/main.py`: crea la aplicación FastAPI, configura CORS y registra las rutas.
 - `app/api/routes.py`: define los endpoints HTTP. Es la capa de entrada de la API y no ejecuta procesamiento pesado.
+- `app/schemas/admin.py`: contratos Pydantic del dashboard admin.
 - `app/cli/create_admin.py`: comando para crear o actualizar el admin inicial.
 - `app/core/config.py`: centraliza configuración por variables de entorno usando `pydantic-settings`.
 - `app/db/base.py`: define la clase base declarativa de SQLAlchemy.
@@ -56,6 +58,12 @@ Esta carpeta contiene la API HTTP del sistema. Está implementada con FastAPI y 
 - `POST /api/studies/{study_id}/retry`: reencola estudios fallidos.
 - `DELETE /api/studies/{study_id}`: soft delete y borrado físico si no está procesando.
 
+## Dashboard Admin
+
+- `GET /api/admin/dashboard`: resumen global solo para `admin`.
+- Agrega cola, jobs por estado, usuarios, estudios por estado, almacenamiento, healthchecks y alertas.
+- No invoca procesamiento ni accede al procesador externo; solo consulta DB, Redis, worker y filesystem.
+
 ## Límites Arquitectónicos
 
-La API no debe importar ni conocer detalles del algoritmo clínico. La ejecución real se delega al worker y siempre pasa por `processor_adapter`.
+La API no debe importar ni conocer detalles internos del procesador externo. La ejecución real se delega al worker y siempre pasa por `processor_adapter`.

@@ -8,6 +8,7 @@ Swagger está disponible en `/api/docs`.
 - `POST /api/auth/login`: login local con email y contraseña.
 - `POST /api/auth/logout`: registrar cierre de sesión cliente.
 - `GET /api/auth/me`: usuario autenticado actual.
+- `GET /api/admin/dashboard`: resumen operativo global. Solo admin.
 - `GET /api/users`: listar usuarios. Solo admin.
 - `POST /api/users`: crear usuario. Solo admin.
 - `POST /api/studies/upload`: subir fichero y encolar procesamiento. Requiere autenticación.
@@ -54,8 +55,22 @@ Respuesta:
 
 Roles iniciales:
 
-- `admin`: ve todos los estudios y crea usuarios.
+- `admin`: ve todos los estudios, crea usuarios y accede al dashboard operativo.
 - `researcher`: sube estudios, lista y descarga solo los propios.
+
+## Dashboard Admin
+
+`GET /api/admin/dashboard` devuelve una foto operativa global para administración:
+
+- cola: jobs en cola, procesando, fallidos y activos.
+- usuarios: totales, activos, admins y researchers.
+- estudios y jobs agrupados por estado.
+- almacenamiento: ruta configurada, existencia, bytes registrados y disco libre/usado.
+- servicios: PostgreSQL, Redis y Worker con estado `ok`, `warning`, `down` o `unknown`.
+- últimos jobs fallidos.
+- alertas básicas no bloqueantes.
+
+Este endpoint no expone datos clínicos ni ejecuta procesamiento; agrega estado ya registrado en la plataforma.
 
 ## Subida
 

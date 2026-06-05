@@ -5,7 +5,8 @@ Esta carpeta es el punto de montaje local para datos generados por la aplicació
 ## Responsabilidad
 
 - Guardar estudios subidos.
-- Guardar resultados PDF.
+- Guardar estructura BIDS preparada por estudio.
+- Guardar outputs del procesador, PDF técnico y ZIP.
 - Guardar logs técnicos del procesador.
 - Mantener metadatos locales por estudio.
 
@@ -15,8 +16,14 @@ Esta carpeta es el punto de montaje local para datos generados por la aplicació
 data/
   studies/
     {study_id}/
-      input/
+      input/original/
+      bids_project/data/sub-XXXX/anat/
+      runtime_project/
       output/
+        Preproc/
+        rendered_png/
+        reports/technical_report.pdf
+        outputs.zip
       logs/
       metadata.json
 ```
@@ -27,4 +34,4 @@ Solo se versionan `.gitkeep` y este `README.md`. Los estudios reales, resultados
 
 ## Advertencia
 
-No guardar datos clínicos identificativos. La versión inicial asume estudios anonimizados y no implementa política de retención.
+No guardar datos identificativos. La versión actual asume estudios anonimizados y todavía no implementa política de retención automática.

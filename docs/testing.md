@@ -30,6 +30,8 @@ Tests actuales:
 - retry de jobs fallidos.
 - soft delete y borrado físico de carpeta de estudio.
 - bloqueo de borrado para estudios en procesamiento.
+- dashboard admin con resumen operativo.
+- bloqueo de dashboard admin para `researcher`.
 
 Ejecutar:
 
@@ -53,7 +55,7 @@ npm run lint
 
 El lint frontend usa `frontend/eslint.config.js`, compatible con ESLint 9. `package-lock.json` debe mantenerse actualizado cuando cambien dependencias frontend.
 
-No se ejecuta build automáticamente por decisión del proyecto.
+No se ejecuta build automáticamente por decisión del proyecto. Si se necesita comprobar el bundle frontend manualmente, usar `npm run build` desde `frontend/`; si se usa Docker/Nginx, reconstruir con `make frontend-rebuild`.
 
 ## Test Manual Lento
 
