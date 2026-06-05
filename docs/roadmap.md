@@ -1,50 +1,498 @@
 # Roadmap
 
-## Milestones Iniciales
+Este roadmap ordena la evolución funcional de la plataforma desde el estado actual del TFM hacia una base realista para uso investigador u hospitalario futuro. No implica que las fases estén implementadas: documenta prioridad, dependencias, riesgos y criterios de aceptación antes de construir nuevas capacidades.
 
-- Milestone 0: preparación del repositorio, README, estructura y documentación base.
-- Milestone 1: Docker Compose mínimo con PostgreSQL, Redis, API, worker, frontend y proxy.
-- Milestone 2: backend FastAPI, PostgreSQL, SQLAlchemy y migraciones.
-- Milestone 3: subida y almacenamiento local de estudios.
-- Milestone 4: cola Redis y Celery worker.
-- Milestone 5: adaptador CLI para script Python externo.
-- Milestone 6: GUI simple en castellano.
-- Milestone 7: descarga del PDF.
-- Milestone 8: logs, auditoría básica y trazabilidad.
-- Milestone 9: tests básicos y scripts de validación.
-- Milestone 10: documentación final para TFM.
-- Milestone 11: renderizado técnico de NIfTI a PNG con FSL `slicer` y PDF técnico con imágenes.
+## Estado Del Proyecto
 
-## Evolución Futura
+La plataforma actual permite subir un estudio T1w `.nii.gz`, preparar BIDS, encolar procesamiento con Celery/Redis, ejecutar el worker `compneuro`, renderizar NIfTI a PNG con FSL `slicer`, generar artefactos técnicos y descargar resultados.
 
-- Futuro 1: autenticación local.
-- Futuro 2: roles usuario/administrador.
-- Futuro 3: historial por usuario.
-- Futuro 4: múltiples scripts o herramientas de procesamiento.
-- Futuro 5: gestión de herramientas Python desde panel admin.
-- Futuro 6: MinIO/S3 y abstracción real de objetos.
-- Futuro 7: TLS real, cabeceras de seguridad y hardening.
-- Futuro 8: integración hospitalaria con sistemas internos.
-- Futuro 9: notificaciones.
-- Futuro 10: Jenkins/CI-CD.
-- Futuro 11: Prometheus, Grafana y Loki.
-- Futuro 12: políticas de retención y archivado.
-- Futuro 13: revisión clínica y validación de informes.
-- Futuro 14: sesiones BIDS y múltiples sujetos por estudio.
-- Futuro 15: ejecutar `utils/brainmeasures.sh` después de `apreproc_launcher.sh`.
-- Futuro 16: múltiples pipelines seleccionables por estudio.
-- Futuro 17: validación BIDS formal con `bids-validator` si el coste operativo queda justificado.
-- Futuro 18: selección más fina de outputs relevantes para el PDF según criterios de revisión técnica.
+Todavía no existen usuarios, login, roles, permisos por propietario, compartición, notificaciones, borrado controlado, retención automática ni dashboard administrativo.
 
-## Criterio Arquitectónico
+## Roadmap de evolución funcional
 
-La prioridad es mantener una base simple, auditable y defendible. Las capacidades clínicas y hospitalarias reales requieren validación, seguridad, trazabilidad y gobierno de datos adicionales.
+### Fase 0 — Estado Actual Consolidado
 
-## Próximas Tareas Técnicas
+Funcionalidades disponibles:
 
-- Documentar comandos alternativos para ejecutar tests y lint dentro del contenedor `api` cuando el host no tenga dependencias Python instaladas.
-- Revisar warnings de `datetime.utcnow()` y valorar migrar a fechas UTC timezone-aware.
-- Mantener la lista de extensiones permitidas alineada entre `ALLOWED_EXTENSIONS`, `docs/api.md` y `docs/security.md`.
-- Añadir consulta de datos operativos en PostgreSQL para administración local si se vuelve necesaria.
+- Subida manual de T1w `.nii.gz`.
+- Preparación BIDS para un sujeto por estudio.
+- Procesamiento asíncrono con Celery/Redis.
+- Worker basado en `compneuro-anatproc`.
+- Renderizado PNG desde NIfTI.
+- PDF técnico y ZIP de outputs.
+- Descarga de resultados desde la GUI.
+- Auditoría básica asociada al estudio.
 
-Fuera de alcance por ahora: autenticación, roles, MinIO/S3, flujos de revisión clínica y modificación de scripts clínicos reales sin petición explícita.
+Criterios de aceptación ya cubiertos:
+
+- La API no ejecuta procesamiento largo dentro del ciclo HTTP.
+- `processor_adapter` sigue siendo la frontera con el procesador externo.
+- Los estudios quedan trazados en PostgreSQL y filesystem local.
+- `make test`, `make lint`, `make check-docs` y `make check-secrets` son los controles principales del proyecto.
+
+### Fase 1 — Multiusuario Básico
+
+Objetivo: introducir identidad, propiedad de estudios y permisos mínimos sin cambiar el pipeline de procesamiento.
+
+Alcance recomendado:
+
+- Login local.
+- Usuarios creados por admin; sin registro público abierto.
+- Roles iniciales `admin` y `researcher`.
+- Sesión segura con expiración.
+- Protección de endpoints sensibles.
+- `owner_user_id` en `Study`.
+- Historial de estudios por usuario.
+- Migración de estudios existentes a usuario `system` o `admin`.
+- Auditoría básica de login, upload, download y delete.
+
+Dependencias:
+
+- Modelo `User` y migración Alembic.
+- Hash robusto de contraseñas.
+- Decisión documentada de cookie session o JWT simple.
+- Definición de permisos por endpoint antes de tocar la GUI.
+
+Riesgos:
+
+- Fuga de estudios si algún endpoint no filtra por propietario.
+- Migración incompleta de estudios previos.
+- Sesiones mal configuradas en navegador si se elige JWT sin política clara de expiración y almacenamiento.
+- Mezclar auth con lógica de procesamiento en lugar de mantenerla en la capa API.
+
+Criterios de aceptación:
+
+- Existe login local funcional.
+- Existe al menos un usuario admin inicial.
+- Los estudios tienen propietario.
+- `researcher` solo ve sus propios estudios.
+- `admin` ve todos los estudios.
+- Los endpoints sensibles están protegidos.
+- La GUI muestra historial por usuario.
+- La documentación explica creación de usuarios, roles y permisos.
+- Tests básicos de permisos pasan.
+- Se mantiene compatibilidad técnica con el pipeline `compneuro`.
+
+### Fase 2 — Gestión De Jobs Y Trazabilidad
+
+Objetivo: mejorar control operativo de jobs sin introducir todavía administración avanzada.
+
+Alcance recomendado:
+
+- Estados de job más detallados, sin porcentajes falsos.
+- Logs visibles en GUI con truncado.
+- Logs finales descargables o visibles de forma segura.
+- Cancelación de jobs en cola.
+- Retry de jobs fallidos.
+- Soft delete en base de datos.
+- Borrado físico controlado de input, BIDS, output, PNG, PDF, ZIP y logs.
+- Auditoría ampliada.
+- Vista detalle de job.
+
+Fuera de esta fase:
+
+- Cancelación de jobs en ejecución.
+- Terminación forzada de procesos FSL o `compneuro`.
+
+Riesgos:
+
+- Exponer rutas internas sensibles en logs.
+- Romper trazabilidad si el borrado físico elimina toda evidencia operativa.
+- Reintentos no idempotentes si no se limpian outputs parciales.
+
+Criterios de aceptación:
+
+- El usuario propietario y el admin pueden ver detalle de job según permisos.
+- Los logs se muestran truncados y sin rutas internas innecesarias.
+- Los jobs en cola pueden cancelarse antes de entrar en ejecución.
+- El borrado conserva auditoría mínima.
+- El retry de un job fallido deja trazabilidad del intento anterior.
+
+### Fase 3 — Admin Dashboard
+
+Objetivo: dar al administrador visibilidad operativa mínima.
+
+Alcance recomendado:
+
+- Estado de cola.
+- Jobs activos y fallidos.
+- Uso de disco.
+- Healthchecks.
+- Estado worker, Redis y PostgreSQL.
+- Usuarios.
+- Estudios por estado.
+- Alertas básicas.
+
+Dependencias:
+
+- Fase 1 para rol admin.
+- Fase 2 para estados y trazabilidad más útiles.
+
+Criterios de aceptación:
+
+- El dashboard solo es accesible para admin.
+- Muestra datos globales sin consultar manualmente la base de datos.
+- Las alertas no bloquean el procesamiento.
+
+### Fase 4 — Backups Y Mantenimiento
+
+Objetivo: documentar y automatizar una recuperación local razonable para TFM sin infraestructura externa compleja.
+
+Alcance recomendado:
+
+- Script local de backup PostgreSQL.
+- Script local de backup de `data/studies`.
+- Script de restore documentado.
+- Smoke test tras restore.
+- Comandos Makefile.
+- Documentación de operación.
+- Política manual de mantenimiento.
+
+Dependencias:
+
+- Definir qué se considera unidad restaurable: base de datos + `data/studies`.
+- Documentar dónde se guardan backups y cómo se protegen fuera de Git.
+
+Criterios de aceptación:
+
+- Un operador puede hacer backup y restore siguiendo la documentación.
+- Tras restore, `make smoke` o check equivalente confirma que la API responde.
+- La documentación advierte que DB y filesystem deben restaurarse juntos.
+
+### Fase 5 — Compartición Segura De Informes
+
+Objetivo: compartir resultados sin crear cuentas completas para receptores externos.
+
+Alcance recomendado:
+
+- Signed temporary links.
+- Caducidad configurable.
+- Revocación.
+- Auditoría de acceso.
+- Descarga PDF mediante token.
+- Descarga ZIP opcional si la política lo permite.
+- Viewer externo sin cuenta completa o rol `viewer` futuro.
+
+Dependencias:
+
+- Fase 1 para propietario y permisos.
+- Fase 2 para auditoría ampliada.
+
+Riesgos:
+
+- Tokens demasiado largos de vida.
+- Links no revocables.
+- Compartición de ZIP con más datos de los necesarios.
+
+Criterios de aceptación:
+
+- El propietario o admin puede crear y revocar links.
+- Los links caducan.
+- Cada descarga queda auditada.
+- El endpoint por token no permite enumerar estudios.
+
+### Fase 6 — Notificaciones
+
+Objetivo: avisar de finalización o fallo sin adjuntar datos pesados.
+
+Alcance recomendado:
+
+- SMTP configurable.
+- Email al completar o fallar.
+- Solo enlaces; sin adjuntar PDF, ZIP ni datos pesados.
+- Preferencias de notificación.
+- Notificación a admin en errores críticos.
+- Notificaciones internas en UI.
+
+Dependencias:
+
+- Fase 1 para email institucional de usuario.
+- Fase 5 si los emails enlazan a recursos compartidos temporales.
+
+Criterios de aceptación:
+
+- El sistema no envía adjuntos pesados.
+- Los errores de SMTP no marcan como fallido el procesamiento principal.
+- Las notificaciones quedan registradas para diagnóstico.
+
+### Fase 7 — Multiple Upload Y Batches
+
+Objetivo: permitir cargar varios estudios sin cambiar el contrato de procesamiento por fichero.
+
+Alcance recomendado:
+
+- Subida múltiple de `.nii.gz`.
+- Un job por fichero.
+- Entidad `BatchUpload` opcional.
+- Tabla filename -> subject ID.
+- Resultado parcial si algunos fallan.
+- Descarga agregada opcional.
+
+Decisión recomendada:
+
+- Mantener un job por fichero. El batch agrupa trazabilidad y experiencia de usuario, no fusiona procesamiento.
+
+Riesgos:
+
+- Que un fallo parcial bloquee todo el lote.
+- Saturar disco o cola sin límites.
+- Ambigüedad entre nombre de fichero y sujeto BIDS.
+
+Criterios de aceptación:
+
+- Cada fichero produce un estudio/job independiente.
+- El usuario puede ver éxito/fallo por fichero.
+- El batch no oculta errores individuales.
+
+### Fase 8 — Retención, Cuotas Y Control De Almacenamiento
+
+Objetivo: controlar crecimiento de datos y costes operativos.
+
+Alcance recomendado:
+
+- Política de retención automática.
+- Recomendación inicial: 90 días.
+- Flag `keep_forever`.
+- Dry-run.
+- Auditoría de borrado.
+- Cuota por usuario.
+- Alerta de uso de disco.
+- Limpieza manual controlada.
+
+Dependencias:
+
+- Fase 1 para cuotas por usuario.
+- Fase 2 para borrado seguro y auditoría.
+- Fase 3 para alertas de disco.
+
+Criterios de aceptación:
+
+- El dry-run muestra qué se borraría sin eliminar datos.
+- `keep_forever` excluye estudios de retención automática.
+- Todo borrado automático genera evento de auditoría.
+
+### Fase 9 — Pipelines Configurables
+
+Objetivo: preparar selección de pipeline sin convertir la plataforma en un gestor dinámico complejo de herramientas.
+
+Alcance recomendado:
+
+- Selección de pipeline por subida.
+- Registro de `pipeline_name` y `pipeline_version`.
+- Habilitar/deshabilitar pipelines por configuración.
+- Mantener `compneuro` como pipeline principal.
+- Mantener `dummy` como pipeline de desarrollo.
+- Gestión avanzada de herramientas solo como futuro lejano.
+
+Decisión recomendada:
+
+- Preparar modelo/configuración antes de UI avanzada.
+- Seguir usando `processor_adapter` como frontera obligatoria.
+
+Riesgos:
+
+- Acoplar API o worker a detalles internos de cada pipeline.
+- Permitir combinaciones de inputs y pipelines no validadas.
+
+Criterios de aceptación:
+
+- Cada estudio registra pipeline usado y versión.
+- La selección no rompe el flujo compneuro actual.
+- Los pipelines deshabilitados no aparecen en la GUI.
+
+### Fase 10 — Integración Institucional
+
+Objetivo: preparar el sistema para usuarios institucionales e investigadores con seguridad reforzada.
+
+Alcance recomendado:
+
+- Google login/OIDC.
+- Restricción por dominio institucional.
+- ORCID login para investigadores.
+- DICOM anonymization check.
+- Preparación para datos reales.
+- Hardening de despliegue.
+- TLS real.
+- Auditoría reforzada.
+
+Decisión recomendada:
+
+- Login local primero, OIDC después. Ambos deben poder convivir.
+- Google/OIDC es deseable para entorno institucional.
+- ORCID solo gana prioridad si el uso investigador pesa más que el hospitalario.
+
+Riesgos:
+
+- Complejidad de identidad externa antes de tener permisos internos sólidos.
+- Confundir check de anonimización con anonimización garantizada.
+
+Criterios de aceptación:
+
+- Los proveedores externos se vinculan a usuarios internos.
+- La restricción de dominio se configura fuera del código.
+- La auditoría diferencia login local y login externo.
+
+### Fase 11 — Revisión Clínica
+
+Objetivo: separar outputs técnicos de una eventual validación profesional.
+
+Alcance recomendado:
+
+- Flag `technical_only`.
+- Estado `reviewed`.
+- Estado `validated`.
+- Usuario revisor.
+- Fecha de revisión.
+- Comentarios.
+
+Dependencias:
+
+- Fase 1 para identidad de revisores.
+- Fase 2 para trazabilidad.
+- Definición clínica/legal externa al desarrollo software.
+
+Criterios de aceptación:
+
+- Solo usuarios autorizados pueden marcar revisión o validación.
+- La revisión no modifica outputs originales.
+- El historial de cambios queda auditado.
+
+## Priorización Recomendada
+
+La próxima fase óptima es **Fase 1 — Multiusuario Básico**.
+
+Justificación:
+
+- Es la base para historial, permisos, sharing, auditoría, borrado seguro y administración.
+- Sin usuarios no hay separación de estudios.
+- Sin owner por estudio no se puede hacer historial correcto ni permisos.
+- Es mejor resolver identidad y autorización antes que notificaciones, cuotas, sharing o dashboard avanzado.
+
+Orden óptimo de implementación tras cerrar este roadmap:
+
+1. Fase 1: identidad, roles, owner y permisos.
+2. Fase 2: jobs, logs, cancelación queued, retry y borrado seguro.
+3. Fase 3: dashboard admin básico.
+4. Fase 4: backups y restore local.
+5. Fase 5: sharing seguro.
+6. Fase 6: notificaciones.
+7. Fase 7: multiple upload y batches.
+8. Fase 8: retención, cuotas y almacenamiento.
+9. Fase 9: pipelines configurables.
+10. Fase 10: integración institucional.
+11. Fase 11: revisión clínica.
+
+## Plan Técnico De Fase 1
+
+### Backend
+
+- Crear modelo `User`.
+- Implementar password hashing robusto.
+- Implementar login local.
+- Implementar logout.
+- Implementar endpoint de usuario actual.
+- Implementar roles `admin` y `researcher`.
+- Añadir owner en `Study` mediante `owner_user_id`.
+- Proteger endpoints de subida, listado, detalle, estado y descarga.
+- Migrar estudios existentes a usuario `system` o admin inicial.
+- Crear o ampliar `AuditEvent` para login, upload y download con `actor_user_id`.
+- Añadir tests de permisos.
+
+### Frontend
+
+- Crear página de login.
+- Mantener estado de sesión.
+- Mostrar sección “Mis estudios”.
+- Ocultar estudios ajenos a usuarios `researcher`.
+- Mostrar vista admin básica si el usuario es `admin`.
+- Mantener mensajes en castellano.
+
+### Base De Datos
+
+Modelo `User` sugerido:
+
+- `id`
+- `email`
+- `full_name`
+- `hashed_password`
+- `role`
+- `is_active`
+- `created_at`
+- `updated_at`
+- `last_login_at`
+
+Cambios sugeridos en `Study`:
+
+- `owner_user_id`
+- `deleted_at` opcional futuro.
+
+Cambios sugeridos en `AuditEvent`:
+
+- `actor_user_id`
+- `event_type`
+- `study_id`
+- `timestamp`
+- `ip_address` opcional.
+- `details`
+
+### Seguridad
+
+- No guardar passwords en texto plano.
+- Usar hashing robusto.
+- No exponer errores de login detallados.
+- Usar sesiones o JWT con expiración.
+- Documentar la decisión cookie/JWT antes de implementarla.
+- Preparar compatibilidad futura con Google/OIDC.
+- Preparar dominios institucionales permitidos como configuración futura.
+- No habilitar registro público abierto en la primera implementación.
+
+### Tests Mínimos
+
+- Crear usuario admin inicial.
+- Login correcto.
+- Login incorrecto.
+- `researcher` solo ve sus estudios.
+- `admin` ve todos los estudios.
+- Usuario no autenticado no accede a endpoints protegidos.
+- Propietario puede ver y descargar su estudio.
+- Usuario no propietario no puede ver ni descargar estudio ajeno.
+- Audit event en login.
+- Audit event en upload.
+- Migración de estudios existentes a usuario `system` o admin.
+
+### Criterios De Aceptación
+
+- Existe login local funcional.
+- Existe al menos un usuario admin inicial.
+- Los estudios tienen propietario.
+- Los usuarios `researcher` solo ven sus propios estudios.
+- `admin` ve todos los estudios.
+- Los endpoints sensibles están protegidos.
+- La GUI muestra historial por usuario.
+- La documentación explica cómo crear usuarios y cómo funcionan roles/permisos.
+- Tests básicos pasan.
+- Se mantiene compatibilidad técnica con el pipeline `compneuro`.
+
+## No Implementar Todavía
+
+- Google login.
+- ORCID login.
+- Rol `viewer` completo.
+- Compartición con links.
+- Email.
+- Retención automática.
+- Multiple upload.
+- Pipeline manager avanzado.
+- Cancelación de running jobs.
+- 2FA.
+- Cuotas.
+- Anonimización DICOM real.
+
+## Decisiones Pendientes Antes De Fase 1
+
+- Elegir cookie session o JWT simple.
+- Definir cómo se crea el primer admin.
+- Definir si `AuditEvent.actor` se conserva como compatibilidad o se reemplaza gradualmente por `actor_user_id`.
+- Definir permisos exactos para cancelar y borrar jobs.
+- Definir texto de errores de login y expiración de sesión.
+- Decidir si el usuario `system` es visible en dashboard admin.

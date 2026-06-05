@@ -61,3 +61,21 @@ Si esa carpeta local no existe, usar cualquier T1w `.nii.gz` anonimizado disponi
 ## Prueba Manual Realizada
 
 En una prueba local con el worker compneuro reconstruido se procesó un T1w `.nii.gz` de ejemplo. El estudio terminó en estado `completed`, generó `output/Preproc`, 18 PNG en `output/rendered_png/`, `output/reports/technical_report.pdf` y `output/outputs.zip`, sin avisos de renderizado registrados.
+
+## Tests Futuros Para Fase 1
+
+Cuando se implemente multiusuario básico, añadir como mínimo:
+
+- Crear usuario admin inicial.
+- Login correcto.
+- Login incorrecto.
+- `researcher` solo ve sus estudios.
+- `admin` ve todos los estudios.
+- Usuario no autenticado no accede a endpoints protegidos.
+- Propietario puede ver y descargar su estudio.
+- Usuario no propietario no puede ver ni descargar estudio ajeno.
+- Audit event en login.
+- Audit event en upload.
+- Migración de estudios existentes a usuario `system` o admin.
+
+Estos tests deben ejecutarse junto a `make test` y no deben requerir el pipeline real `compneuro`.

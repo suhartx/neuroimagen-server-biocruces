@@ -120,6 +120,9 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 - Sin anonimización DICOM integrada.
 - Sin roles ni revisión clínica formal.
 - Sin retención automática de datos.
+- Sin compartición de informes mediante enlaces firmados.
+- Sin notificaciones por email.
+- Sin subida múltiple ni batches.
 - Sin MinIO/S3 en esta versión.
 - El procesador dummy no tiene validez clínica.
 - La integración `compneuro-anatproc` inicial ejecuta solo `src/apreproc_launcher.sh`; `brainmeasures.sh` queda como mejora futura.
@@ -127,4 +130,6 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 
 ## Roadmap
 
-El roadmap detallado está en `docs/roadmap.md` e incluye autenticación, roles, múltiples herramientas, MinIO/S3, TLS real, CI/CD, monitorización, retención y validación clínica.
+El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La siguiente fase recomendada es **Fase 1 — Multiusuario básico**: login local, usuarios creados por admin, roles `admin`/`researcher`, propietario por estudio, historial por usuario, protección de endpoints y auditoría mínima.
+
+Quedan para fases posteriores: Google/OIDC, ORCID, compartición mediante enlaces firmados, notificaciones, múltiples subidas, retención automática, cuotas, pipelines configurables avanzados e integración institucional.
