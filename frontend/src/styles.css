@@ -113,6 +113,17 @@ button:disabled {
   color: #12324a;
 }
 
+.danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.compact {
+  margin: 2px;
+  padding: 8px 12px;
+  font-size: .85rem;
+}
+
 .light {
   background: rgba(255,255,255,.18);
   color: white;
@@ -154,6 +165,36 @@ code {
 
 .small-table {
   margin-top: 18px;
+}
+
+.actions-cell {
+  min-width: 230px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 10px 16px;
+}
+
+.detail-grid dt {
+  color: #667085;
+  font-weight: 700;
+}
+
+.detail-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.log-block pre {
+  max-height: 360px;
+  overflow: auto;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #dbeafe;
+  padding: 16px;
+  white-space: pre-wrap;
 }
 
 table {

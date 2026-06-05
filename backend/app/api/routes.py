@@ -11,6 +11,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     Request,
     UploadFile,
     status,
@@ -32,7 +33,16 @@ from app.schemas.auth import (
     UserCreate,
     UserRead,
 )
-from app.schemas.study import StudyRead, StudyStatusRead, UploadResponse
+from app.schemas.study import (
+    ProcessingJobRead,
+    StudyActionResponse,
+    StudyDetailRead,
+    StudyLogEntry,
+    StudyLogsRead,
+    StudyRead,
+    StudyStatusRead,
+    UploadResponse,
+)
 from app.services.audit import record_event
 from app.services.auth import (
     client_ip,
@@ -273,7 +283,10 @@ def upload_study(
         },
     )
 
-    process_study.delay(str(study_id), str(job.id))
+    async_result = process_study.delay(str(study_id), str(job.id))
+    if getattr(async_result, "id", None):
+        job.celery_task_id = async_result.id
+        db.commit()
     return UploadResponse(
         id=study_id,
         status=study.status.value,
@@ -286,7 +299,11 @@ def upload_study(
 def list_studies(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> list[StudyRead]:
-    query = select(Study).order_by(Study.created_at.desc())
+    query = (
+        select(Study)
+        .where(Study.deleted_at.is_(None))
+        .order_by(Study.created_at.desc())
+    )
     if current_user.role != UserRole.admin.value:
         query = query.where(Study.owner_user_id == current_user.id)
     studies = db.scalars(query).all()
@@ -304,8 +321,26 @@ def get_study(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
         )
+    if study.deleted_at:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
+        )
     require_study_access(study.owner_user_id, current_user)
     return to_study_read(study)
+
+
+@router.get("/studies/{study_id}/detail", response_model=StudyDetailRead)
+def get_study_detail(
+    study_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StudyDetailRead:
+    study = _get_visible_study(db, study_id, current_user)
+    jobs = sorted(study.jobs, key=lambda item: item.queued_at, reverse=True)
+    return StudyDetailRead(
+        **to_study_read(study).model_dump(),
+        jobs=[ProcessingJobRead.model_validate(job) for job in jobs],
+    )
 
 
 @router.get("/studies/{study_id}/status", response_model=StudyStatusRead)
@@ -316,6 +351,10 @@ def get_study_status(
 ) -> StudyStatusRead:
     study = db.get(Study, study_id)
     if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
+        )
+    if study.deleted_at:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
         )
@@ -344,6 +383,10 @@ def download_pdf(
             status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
         )
     require_study_access(study.owner_user_id, current_user)
+    if study.deleted_at:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
+        )
     if study.status != StudyStatus.completed or not study.pdf_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -394,6 +437,10 @@ def download_outputs_zip(
             status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
         )
     require_study_access(study.owner_user_id, current_user)
+    if study.deleted_at:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
+        )
     if study.status != StudyStatus.completed or not study.output_zip_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -419,6 +466,148 @@ def download_outputs_zip(
     )
 
 
+@router.get("/studies/{study_id}/logs", response_model=StudyLogsRead)
+def get_study_logs(
+    study_id: UUID,
+    lines: int = Query(default=200, ge=1, le=1000),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> StudyLogsRead:
+    study = _get_visible_study(db, study_id, current_user)
+    storage = LocalStudyStorage(settings.storage_root)
+    logs = []
+    for name in ["processor.log", "rendering.log"]:
+        path = storage.logs_dir(study.id) / name
+        if path.exists() and path.is_file():
+            content, truncated = _read_last_lines(path, lines)
+            logs.append(StudyLogEntry(name=name, content=content, truncated=truncated))
+    return StudyLogsRead(study_id=study.id, logs=logs)
+
+
+@router.post("/studies/{study_id}/cancel", response_model=StudyActionResponse)
+def cancel_queued_study(
+    request: Request,
+    study_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StudyActionResponse:
+    study = _get_visible_study(db, study_id, current_user)
+    if study.status != StudyStatus.queued:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Solo se pueden cancelar jobs en cola",
+        )
+    job = _latest_job(study)
+    if job and job.celery_task_id:
+        process_study.app.control.revoke(job.celery_task_id)
+    now = datetime.utcnow()
+    study.status = StudyStatus.canceled
+    study.processing_finished_at = now
+    study.error_message = "Cancelado por el usuario"
+    if job:
+        job.status = StudyStatus.canceled.value
+        job.finished_at = now
+        job.error_message = "Cancelado antes de iniciar procesamiento"
+    record_event(
+        db,
+        "study_canceled",
+        study.id,
+        {"job_id": str(job.id) if job else None},
+        actor=current_user.email,
+        actor_user_id=current_user.id,
+        ip_address=client_ip(request),
+    )
+    db.commit()
+    return StudyActionResponse(
+        id=study.id, status=study.status.value, message="Job cancelado"
+    )
+
+
+@router.post("/studies/{study_id}/retry", response_model=StudyActionResponse)
+def retry_failed_study(
+    request: Request,
+    study_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StudyActionResponse:
+    study = _get_visible_study(db, study_id, current_user)
+    if study.status != StudyStatus.failed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Solo se pueden reintentar jobs fallidos",
+        )
+    retry_count = max((job.retry_count for job in study.jobs), default=0) + 1
+    job = ProcessingJob(
+        study_id=study.id, status=StudyStatus.queued.value, retry_count=retry_count
+    )
+    study.status = StudyStatus.queued
+    study.error_message = None
+    study.processing_started_at = None
+    study.processing_finished_at = None
+    study.pdf_path = None
+    study.output_zip_path = None
+    study.processing_warnings = None
+    db.add(job)
+    record_event(
+        db,
+        "study_retry_queued",
+        study.id,
+        {"retry_count": retry_count},
+        actor=current_user.email,
+        actor_user_id=current_user.id,
+        ip_address=client_ip(request),
+    )
+    db.commit()
+    async_result = process_study.delay(str(study.id), str(job.id))
+    if getattr(async_result, "id", None):
+        job.celery_task_id = async_result.id
+        db.commit()
+    return StudyActionResponse(
+        id=study.id, status=study.status.value, message="Job reencolado"
+    )
+
+
+@router.delete("/studies/{study_id}", response_model=StudyActionResponse)
+def delete_study(
+    request: Request,
+    study_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> StudyActionResponse:
+    study = _get_visible_study(db, study_id, current_user)
+    if study.status == StudyStatus.processing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede borrar un estudio en procesamiento",
+        )
+    job = _latest_job(study)
+    if study.status == StudyStatus.queued:
+        if job and job.celery_task_id:
+            process_study.app.control.revoke(job.celery_task_id)
+        study.status = StudyStatus.canceled
+        if job:
+            job.status = StudyStatus.canceled.value
+            job.finished_at = datetime.utcnow()
+            job.error_message = "Cancelado por borrado del estudio"
+    study.deleted_at = datetime.utcnow()
+    record_event(
+        db,
+        "study_deleted",
+        study.id,
+        {"status": study.status.value, "physical_delete": True},
+        actor=current_user.email,
+        actor_user_id=current_user.id,
+        ip_address=client_ip(request),
+    )
+    db.commit()
+    LocalStudyStorage(settings.storage_root).remove_study(study.id)
+    return StudyActionResponse(
+        id=study.id, status=study.status.value, message="Estudio borrado"
+    )
+
+
 def to_study_read(study: Study) -> StudyRead:
     return StudyRead(
         id=study.id,
@@ -429,6 +618,7 @@ def to_study_read(study: Study) -> StudyRead:
         updated_at=study.updated_at,
         processing_started_at=study.processing_started_at,
         processing_finished_at=study.processing_finished_at,
+        deleted_at=study.deleted_at,
         error_message=study.error_message,
         processor_name=study.processor_name,
         processor_version=study.processor_version,
@@ -440,3 +630,25 @@ def to_study_read(study: Study) -> StudyRead:
         has_output_zip=bool(study.output_zip_path),
         processing_warnings=study.processing_warnings,
     )
+
+
+def _get_visible_study(db: Session, study_id: UUID, current_user: User) -> Study:
+    study = db.get(Study, study_id)
+    if not study or study.deleted_at:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
+        )
+    require_study_access(study.owner_user_id, current_user)
+    return study
+
+
+def _latest_job(study: Study) -> ProcessingJob | None:
+    if not study.jobs:
+        return None
+    return max(study.jobs, key=lambda item: item.queued_at)
+
+
+def _read_last_lines(path: Path, lines: int) -> tuple[str, bool]:
+    all_lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    truncated = len(all_lines) > lines
+    return "\n".join(all_lines[-lines:]), truncated

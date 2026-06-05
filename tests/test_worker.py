@@ -77,3 +77,63 @@ def test_worker_marks_study_failed_when_script_fails(tmp_path, monkeypatch):
     assert study.error_message == "El procesador externo terminó con error"
     db.close()
     get_settings.cache_clear()
+
+
+def test_worker_skips_canceled_study(tmp_path, monkeypatch):
+    db_path = tmp_path / "worker.db"
+    storage_root = tmp_path / "studies"
+    study_id = uuid4()
+    job_id = uuid4()
+    monkeypatch.setenv("STORAGE_ROOT", str(storage_root))
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("PROCESSOR_BACKEND", "dummy")
+    get_settings.cache_clear()
+
+    engine = create_engine(
+        f"sqlite:///{db_path}", connect_args={"check_same_thread": False}
+    )
+    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+    Base.metadata.create_all(bind=engine)
+
+    import worker.tasks as tasks
+
+    monkeypatch.setattr(tasks, "SessionLocal", TestingSessionLocal)
+
+    db = TestingSessionLocal()
+    owner_id = uuid4()
+    db.add(
+        User(
+            id=owner_id,
+            email="worker-owner@example.org",
+            full_name="Worker Owner",
+            hashed_password=hash_password("secret-pass"),
+            role=UserRole.researcher.value,
+            is_active=True,
+        )
+    )
+    db.add(
+        Study(
+            id=study_id,
+            owner_user_id=owner_id,
+            original_filename="study.nii",
+            stored_path=str(storage_root / str(study_id) / "input" / "study.nii"),
+            output_path=str(storage_root / str(study_id) / "output"),
+            status=StudyStatus.canceled,
+        )
+    )
+    db.add(
+        ProcessingJob(id=job_id, study_id=study_id, status=StudyStatus.canceled.value)
+    )
+    db.commit()
+    db.close()
+
+    process_study.run(str(study_id), str(job_id))
+
+    db = TestingSessionLocal()
+    study = db.get(Study, study_id)
+    job = db.get(ProcessingJob, job_id)
+    assert study.status == StudyStatus.canceled
+    assert job.status == StudyStatus.canceled.value
+    assert job.started_at is None
+    db.close()
+    get_settings.cache_clear()

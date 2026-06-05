@@ -77,6 +77,8 @@ Criterios de aceptación:
 
 ### Fase 2 — Gestión De Jobs Y Trazabilidad
 
+Estado: implementada como base funcional.
+
 Objetivo: mejorar control operativo de jobs sin introducir todavía administración avanzada.
 
 Alcance recomendado:
@@ -361,27 +363,26 @@ Criterios de aceptación:
 
 ## Priorización Recomendada
 
-La próxima fase óptima es **Fase 2 — Gestión de jobs y trazabilidad**.
+La próxima fase óptima es **Fase 3 — Admin Dashboard**.
 
 Justificación:
 
 - La Fase 1 ya establece identidad, roles, propietario por estudio e historial básico.
-- La siguiente necesidad operativa es controlar mejor errores, logs, cancelación en cola, retry y borrado seguro.
-- Fase 2 desbloquea dashboard admin útil, retención y sharing con auditoría real.
-- Conviene resolver trazabilidad de jobs antes que notificaciones, cuotas o integración institucional.
+- La Fase 2 ya añade detalle de job, logs truncados, cancelación queued, retry y borrado seguro.
+- El siguiente salto natural es visibilidad operativa global para admin.
+- Conviene construir dashboard antes que notificaciones, cuotas o integración institucional.
 
 Orden óptimo de implementación tras cerrar este roadmap:
 
-1. Fase 2: jobs, logs, cancelación queued, retry y borrado seguro.
-2. Fase 3: dashboard admin básico.
-3. Fase 4: backups y restore local.
-4. Fase 5: sharing seguro.
-5. Fase 6: notificaciones.
-6. Fase 7: multiple upload y batches.
-7. Fase 8: retención, cuotas y almacenamiento.
-8. Fase 9: pipelines configurables.
-9. Fase 10: integración institucional.
-10. Fase 11: revisión clínica.
+1. Fase 3: dashboard admin básico.
+2. Fase 4: backups y restore local.
+3. Fase 5: sharing seguro.
+4. Fase 6: notificaciones.
+5. Fase 7: multiple upload y batches.
+6. Fase 8: retención, cuotas y almacenamiento.
+7. Fase 9: pipelines configurables.
+8. Fase 10: integración institucional.
+9. Fase 11: revisión clínica.
 
 ## Plan Técnico De Fase 1
 

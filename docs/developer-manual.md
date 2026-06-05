@@ -71,7 +71,7 @@ Crear el primer admin:
 make create-admin EMAIL=admin@example.org
 ```
 
-La siguiente fase recomendada es gestión de jobs y trazabilidad: logs visibles con truncado, cancelación de jobs en cola, retry de fallidos y borrado seguro.
+La gestión básica de jobs ya incluye logs truncados, cancelación de jobs en cola, retry de fallidos y borrado seguro. La siguiente fase recomendada es un dashboard admin con estado global de cola, jobs, almacenamiento y healthchecks.
 
 Permisos mínimos esperados:
 

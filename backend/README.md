@@ -14,6 +14,7 @@ Esta carpeta contiene la API HTTP del sistema. Está implementada con FastAPI y 
 - Encolar el procesamiento asíncrono.
 - Descargar el PDF cuando el worker lo haya generado.
 - Crear usuarios desde admin y permitir la creación del admin inicial por CLI.
+- Exponer detalle de jobs, logs truncados, cancelación queued, retry de fallidos y borrado seguro.
 
 ## Estructura Del Código
 
@@ -46,6 +47,14 @@ Esta carpeta contiene la API HTTP del sistema. Está implementada con FastAPI y 
 5. Se crean `Study` con `owner_user_id` y `ProcessingJob` con estado `queued`.
 6. Se registra auditoría con `record_event` y usuario actor.
 7. Se llama a `process_study.delay(...)` para delegar el trabajo al worker.
+
+## Gestión De Jobs
+
+- `GET /api/studies/{study_id}/detail`: estudio y jobs asociados.
+- `GET /api/studies/{study_id}/logs`: `processor.log` y `rendering.log` truncados.
+- `POST /api/studies/{study_id}/cancel`: cancela solo jobs en cola.
+- `POST /api/studies/{study_id}/retry`: reencola estudios fallidos.
+- `DELETE /api/studies/{study_id}`: soft delete y borrado físico si no está procesando.
 
 ## Límites Arquitectónicos
 

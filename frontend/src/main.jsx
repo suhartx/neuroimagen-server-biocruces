@@ -14,6 +14,8 @@ function App() {
   const [subjectId, setSubjectId] = useState('');
   const [studies, setStudies] = useState([]);
   const [users, setUsers] = useState([]);
+  const [selectedDetail, setSelectedDetail] = useState(null);
+  const [selectedLogs, setSelectedLogs] = useState(null);
   const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'researcher' });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -174,6 +176,49 @@ function App() {
     window.URL.revokeObjectURL(url);
   }
 
+  async function loadStudyDetail(study) {
+    const response = await authFetch(`${API_BASE}/studies/${study.id}/detail`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo cargar el detalle.');
+      return;
+    }
+    setSelectedDetail(payload);
+    setSelectedLogs(null);
+  }
+
+  async function loadStudyLogs(study) {
+    const response = await authFetch(`${API_BASE}/studies/${study.id}/logs?lines=200`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudieron cargar los logs.');
+      return;
+    }
+    setSelectedLogs(payload);
+    setSelectedDetail(null);
+  }
+
+  async function runStudyAction(study, action) {
+    const labels = {
+      cancel: 'cancelar este job en cola',
+      retry: 'reintentar este estudio',
+      delete: 'borrar este estudio y sus ficheros',
+    };
+    if (!window.confirm(`¿Seguro que querés ${labels[action]}?`)) return;
+    const response = await authFetch(`${API_BASE}/studies/${study.id}${action === 'delete' ? '' : `/${action}`}`, {
+      method: action === 'delete' ? 'DELETE' : 'POST',
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo completar la operación.');
+      return;
+    }
+    setMessage(payload.message || 'Operación completada.');
+    setSelectedDetail(null);
+    setSelectedLogs(null);
+    await loadStudies();
+  }
+
   return (
     <main className="page">
       <section className="hero">
@@ -241,6 +286,7 @@ function App() {
                     <th>Estado</th>
                     <th>Fecha</th>
                     <th>Resultados</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -258,15 +304,82 @@ function App() {
                         )}
                         {study.has_output_zip && <button className="download secondary-download" onClick={() => downloadArtifact(study, 'zip')}>ZIP outputs</button>}
                       </td>
+                      <td className="actions-cell">
+                        <button className="secondary compact" onClick={() => loadStudyDetail(study)}>Detalle</button>
+                        <button className="secondary compact" onClick={() => loadStudyLogs(study)}>Logs</button>
+                        {study.status === 'queued' && <button className="secondary compact" onClick={() => runStudyAction(study, 'cancel')}>Cancelar</button>}
+                        {study.status === 'failed' && <button className="secondary compact" onClick={() => runStudyAction(study, 'retry')}>Reintentar</button>}
+                        {study.status !== 'processing' && <button className="danger compact" onClick={() => runStudyAction(study, 'delete')}>Borrar</button>}
+                      </td>
                     </tr>
                   ))}
                   {studies.length === 0 && (
-                    <tr><td colSpan="5" className="muted">Todavía no hay estudios registrados.</td></tr>
+                    <tr><td colSpan="6" className="muted">Todavía no hay estudios registrados.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </section>
+
+          {selectedDetail && (
+            <section className="card detail-card">
+              <div className="section-title">
+                <h2>Detalle de estudio</h2>
+                <button className="secondary" onClick={() => setSelectedDetail(null)}>Cerrar</button>
+              </div>
+              <dl className="detail-grid">
+                <dt>ID</dt><dd>{selectedDetail.id}</dd>
+                <dt>Fichero</dt><dd>{selectedDetail.original_filename}</dd>
+                <dt>Estado</dt><dd><Status value={selectedDetail.status} error={selectedDetail.error_message} warnings={selectedDetail.processing_warnings} /></dd>
+                <dt>Sujeto</dt><dd>{selectedDetail.bids_subject_id || 'No aplica'}</dd>
+                <dt>Pipeline</dt><dd>{selectedDetail.processor_backend || 'No informado'}</dd>
+                <dt>Checksum</dt><dd>{selectedDetail.checksum || 'No informado'}</dd>
+              </dl>
+              <h3>Jobs</h3>
+              <div className="table-wrap small-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Estado</th>
+                      <th>Intento</th>
+                      <th>Worker</th>
+                      <th>Inicio</th>
+                      <th>Fin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedDetail.jobs.map((job) => (
+                      <tr key={job.id}>
+                        <td><code>{job.id.slice(0, 8)}</code></td>
+                        <td>{job.status}</td>
+                        <td>{job.retry_count}</td>
+                        <td>{job.worker_name || <span className="muted">No asignado</span>}</td>
+                        <td>{job.started_at ? new Date(job.started_at).toLocaleString('es-ES') : <span className="muted">Pendiente</span>}</td>
+                        <td>{job.finished_at ? new Date(job.finished_at).toLocaleString('es-ES') : <span className="muted">Pendiente</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {selectedLogs && (
+            <section className="card detail-card">
+              <div className="section-title">
+                <h2>Logs del estudio</h2>
+                <button className="secondary" onClick={() => setSelectedLogs(null)}>Cerrar</button>
+              </div>
+              {selectedLogs.logs.length === 0 && <p className="muted">No hay logs disponibles todavía.</p>}
+              {selectedLogs.logs.map((log) => (
+                <article key={log.name} className="log-block">
+                  <h3>{log.name}{log.truncated ? ' (truncado)' : ''}</h3>
+                  <pre>{log.content || 'Log vacío'}</pre>
+                </article>
+              ))}
+            </section>
+          )}
 
           {user.role === 'admin' && (
             <section className="card">

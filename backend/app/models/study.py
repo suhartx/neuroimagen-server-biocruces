@@ -17,6 +17,7 @@ class StudyStatus(str, enum.Enum):
     processing = "processing"
     completed = "completed"
     failed = "failed"
+    canceled = "canceled"
 
 
 class Study(Base):
@@ -49,6 +50,7 @@ class Study(Base):
     )
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime)
     processing_finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime)
     error_message: Mapped[str | None] = mapped_column(Text)
     processor_name: Mapped[str | None] = mapped_column(String(255))
     processor_version: Mapped[str | None] = mapped_column(String(100))

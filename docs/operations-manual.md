@@ -74,8 +74,9 @@ La reejecución no está expuesta en GUI. Si se reejecuta manualmente, conservar
 
 ## Operación Futura De Jobs
 
-- La cancelación inicial debe limitarse a jobs en cola.
+- La cancelación inicial está limitada a jobs en cola.
 - La cancelación de jobs en ejecución queda para fase posterior porque requiere gestionar procesos FSL y `compneuro` con cuidado.
-- El retry de jobs fallidos debe registrar intento previo y limpiar o versionar outputs parciales.
-- Los logs visibles en GUI deben truncarse y evitar rutas internas sensibles.
+- El retry de jobs fallidos crea un nuevo `ProcessingJob` y conserva trazabilidad del intento previo.
+- Los logs visibles en GUI se devuelven truncados desde `processor.log` y `rendering.log`.
+- El borrado aplica soft delete en DB y borrado físico de la carpeta del estudio; conserva auditoría mínima.
 - El admin dashboard básico debería mostrar cola, jobs activos/fallidos, uso de disco, healthchecks, worker, Redis, PostgreSQL, usuarios y estudios por estado.

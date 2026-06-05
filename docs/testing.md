@@ -24,6 +24,12 @@ Tests actuales:
 - historial filtrado por propietario.
 - descarga permitida para propietario y bloqueada para no propietario.
 - auditoría de login y upload con usuario actor.
+- detalle de estudio con jobs.
+- logs truncados.
+- cancelación de jobs en cola.
+- retry de jobs fallidos.
+- soft delete y borrado físico de carpeta de estudio.
+- bloqueo de borrado para estudios en procesamiento.
 
 Ejecutar:
 

@@ -95,6 +95,7 @@ erDiagram
     datetime updated_at
     datetime processing_started_at
     datetime processing_finished_at
+    datetime deleted_at
     text error_message
     string processor_name
     string processor_version
@@ -104,6 +105,7 @@ erDiagram
   ProcessingJob {
     uuid id PK
     uuid study_id FK
+    string celery_task_id
     string status
     datetime queued_at
     datetime started_at
@@ -158,6 +160,8 @@ stateDiagram-v2
 ```
 
 Estados futuros documentados: `review_pending`, `reviewed`, `rejected`, `archived`.
+
+La cancelación implementada se limita a trabajos en cola y usa el estado `canceled`. La cancelación de procesos ya en ejecución queda fuera porque requiere gestionar de forma segura procesos externos de FSL/`compneuro`.
 
 No se añade un estado `bids_prepared` en la primera integración: la preparación BIDS ocurre antes de encolar y queda trazada mediante campos y auditoría. Si falla, la subida responde con error y no crea un estudio procesable.
 

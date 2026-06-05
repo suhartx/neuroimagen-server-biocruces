@@ -73,7 +73,7 @@ Cuando se modifica el frontend y se usa el despliegue Docker/Nginx, ejecuta `mak
 8. En modo `dummy`, se usa `PROCESSOR_COMMAND`; en modo `compneuro`, se usa `COMPNEURO_COMMAND`.
 9. El procesador dummy genera un PDF de desarrollo o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
 10. El worker detecta outputs, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
-11. La GUI permite descargar el PDF técnico y/o el ZIP si el usuario tiene permiso.
+11. La GUI permite ver detalle/logs, cancelar jobs en cola, reintentar fallidos, borrar estudios permitidos y descargar PDF/ZIP si el usuario tiene permiso.
 
 ## Procesadores
 
@@ -132,6 +132,6 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 
 ## Roadmap
 
-El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La siguiente fase recomendada es **Fase 2 — Gestión de jobs y trazabilidad**: estados más detallados, logs visibles con truncado, cancelación de jobs en cola, retry de jobs fallidos y borrado seguro.
+El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La siguiente fase recomendada es **Fase 3 — Admin dashboard**: estado de cola, jobs activos/fallidos, uso de disco, healthchecks, usuarios y estudios por estado.
 
 Quedan para fases posteriores: Google/OIDC, ORCID, compartición mediante enlaces firmados, notificaciones, múltiples subidas, retención automática, cuotas, pipelines configurables avanzados e integración institucional.

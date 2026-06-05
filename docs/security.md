@@ -71,6 +71,7 @@ Permisos esperados:
 - Las descargas mediante token deben registrar auditoría.
 - Los emails futuros deben enviar enlaces, no adjuntos pesados.
 - Los logs visibles en GUI deben truncarse y evitar rutas internas sensibles.
+- El borrado de estudios aplica soft delete y borrado físico, conservando auditoría mínima.
 
 ## Pendiente Antes De Entorno Hospitalario
 

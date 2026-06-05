@@ -9,6 +9,8 @@ Esta carpeta contiene la GUI web sencilla en castellano. Está implementada con 
 - Listar estudios visibles según permisos.
 - Mostrar estados de procesamiento.
 - Permitir descargar PDF/ZIP cuando estén disponibles y el usuario tenga permiso.
+- Mostrar detalle de jobs y logs truncados.
+- Permitir cancelar jobs en cola, reintentar fallidos y borrar estudios permitidos.
 - Permitir gestión básica de usuarios para admin.
 - Mostrar advertencias de uso clínico responsable.
 
@@ -40,8 +42,9 @@ npm run lint
 4. La UI envía `POST /api/studies/upload` con `FormData` y `Authorization: Bearer`.
 5. La UI refresca el listado de estudios permitido para el usuario.
 6. Cada 5 segundos consulta `/api/studies` para actualizar estados.
-7. Si `has_pdf` o `has_output_zip` es verdadero, descarga con `fetch` autenticado.
+7. La tabla permite ver detalle/logs y ejecutar acciones según estado del estudio.
+8. Si `has_pdf` o `has_output_zip` es verdadero, descarga con `fetch` autenticado.
 
 ## Criterio De Diseño
 
-La interfaz es deliberadamente simple. Incluye login local, historial por usuario y creación básica de usuarios admin. No incluye sharing, notificaciones, revisión clínica ni flujos hospitalarios futuros.
+La interfaz es deliberadamente simple. Incluye login local, historial por usuario, gestión básica de jobs y creación básica de usuarios admin. No incluye sharing, notificaciones, revisión clínica ni flujos hospitalarios futuros.

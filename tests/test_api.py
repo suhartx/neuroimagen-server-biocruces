@@ -197,6 +197,138 @@ def test_owner_can_download_completed_report(client):
     assert download.headers["content-type"] == "application/pdf"
 
 
+def test_study_detail_includes_jobs(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+
+    detail = client.get(f"/api/studies/{study_id}/detail", headers=headers)
+
+    assert detail.status_code == 200
+    assert detail.json()["id"] == study_id
+    assert detail.json()["jobs"][0]["status"] == "queued"
+
+
+def test_logs_endpoint_returns_truncated_logs(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+
+    db = client.app.state.testing_session_local()
+    study = db.get(Study, UUID(study_id))
+    log_path = Path(study.output_path).parent / "logs" / "processor.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("line1\nline2\nline3\n", encoding="utf-8")
+    db.close()
+
+    logs = client.get(f"/api/studies/{study_id}/logs?lines=2", headers=headers)
+
+    assert logs.status_code == 200
+    payload = logs.json()
+    assert payload["logs"][0]["name"] == "processor.log"
+    assert payload["logs"][0]["content"] == "line2\nline3"
+    assert payload["logs"][0]["truncated"] is True
+
+
+def test_cancel_queued_study(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+
+    cancel = client.post(f"/api/studies/{study_id}/cancel", headers=headers)
+
+    assert cancel.status_code == 200
+    assert cancel.json()["status"] == "canceled"
+    status_response = client.get(f"/api/studies/{study_id}/status", headers=headers)
+    assert status_response.json()["status"] == "canceled"
+
+
+def test_retry_failed_study_creates_new_job(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+
+    db = client.app.state.testing_session_local()
+    study = db.get(Study, UUID(study_id))
+    study.status = StudyStatus.failed
+    study.error_message = "forced failure"
+    db.commit()
+    db.close()
+
+    retry = client.post(f"/api/studies/{study_id}/retry", headers=headers)
+
+    assert retry.status_code == 200
+    assert retry.json()["status"] == "queued"
+    detail = client.get(f"/api/studies/{study_id}/detail", headers=headers).json()
+    assert len(detail["jobs"]) == 2
+    assert detail["jobs"][0]["retry_count"] == 1
+
+
+def test_delete_study_soft_deletes_and_removes_storage(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+
+    db = client.app.state.testing_session_local()
+    study = db.get(Study, UUID(study_id))
+    study_dir = Path(study.output_path).parent
+    assert study_dir.exists()
+    db.close()
+
+    delete = client.delete(f"/api/studies/{study_id}", headers=headers)
+
+    assert delete.status_code == 200
+    assert not study_dir.exists()
+    assert client.get("/api/studies", headers=headers).json() == []
+
+    db = client.app.state.testing_session_local()
+    deleted_study = db.get(Study, UUID(study_id))
+    event = db.query(AuditEvent).filter(AuditEvent.event_type == "study_deleted").one()
+    assert deleted_study.deleted_at is not None
+    assert event.study_id == UUID(study_id)
+    db.close()
+
+
+def test_delete_processing_study_is_rejected(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+
+    db = client.app.state.testing_session_local()
+    study = db.get(Study, UUID(study_id))
+    study.status = StudyStatus.processing
+    db.commit()
+    db.close()
+
+    delete = client.delete(f"/api/studies/{study_id}", headers=headers)
+
+    assert delete.status_code == 409
+
+
 def test_admin_can_create_researcher_user(client):
     admin_headers, _ = auth_headers(
         client, "admin@example.org", "secret-pass", role=UserRole.admin.value

@@ -15,6 +15,18 @@ El PDF técnico lista metadatos, ficheros generados y PNG renderizados automáti
 
 Si el estado aparece como completado con avisos, el procesamiento principal terminó pero algún NIfTI pudo no renderizarse a PNG. En ese caso revisa el PDF y avisa al administrador si faltan imágenes esperadas.
 
+## Gestión De Estudios
+
+Desde la tabla de estudios se puede:
+
+- Ver detalle técnico del estudio y sus jobs.
+- Ver logs truncados si existen.
+- Cancelar estudios que siguen en cola.
+- Reintentar estudios fallidos.
+- Borrar estudios que no están procesando.
+
+El borrado elimina físicamente los ficheros asociados y deja auditoría mínima en base de datos.
+
 ## Usuarios Y Roles
 
 - `researcher`: puede subir estudios, ver su historial propio y descargar resultados propios.
