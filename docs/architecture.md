@@ -56,6 +56,8 @@ Esta decisión no obliga a usar siempre esa imagen ni ese launcher. La frontera 
 
 ## Modelo ER
 
+El modelo siguiente refleja el estado implementado actualmente. La evolución multiusuario prevista se documenta después como arquitectura objetivo, no como funcionalidad disponible.
+
 ```mermaid
 erDiagram
   Study ||--o{ ProcessingJob : has
@@ -108,6 +110,54 @@ erDiagram
     string ip_address
   }
 ```
+
+## Arquitectura Objetivo Multiusuario
+
+La próxima evolución recomendada es introducir identidad y autorización en la API antes de construir sharing, retención, notificaciones o dashboard avanzado.
+
+Modelo objetivo inicial:
+
+```mermaid
+erDiagram
+  User ||--o{ Study : owns
+  User ||--o{ AuditEvent : performs
+  Study ||--o{ ProcessingJob : has
+  Study ||--o{ AuditEvent : emits
+  User {
+    uuid id PK
+    string email
+    string full_name
+    string hashed_password
+    enum role
+    bool is_active
+    datetime created_at
+    datetime updated_at
+    datetime last_login_at
+  }
+  Study {
+    uuid id PK
+    uuid owner_user_id FK
+    datetime deleted_at
+  }
+  AuditEvent {
+    uuid id PK
+    uuid actor_user_id FK
+    uuid study_id FK
+    string event_type
+    datetime timestamp
+    string ip_address
+    text details
+  }
+```
+
+Reglas objetivo:
+
+- `admin` puede ver todos los estudios, gestionar usuarios y acceder al dashboard administrativo.
+- `researcher` puede subir estudios, ver historial propio, descargar resultados propios y consultar logs propios limitados.
+- Los usuarios iniciales deben ser creados por admin; no se recomienda registro público abierto para la primera fase.
+- Un rol `viewer` completo no entra en la primera implementación. La compartición futura debería resolverse con enlaces firmados, caducidad, revocación y auditoría.
+- Google/OIDC y ORCID deben vincularse a usuarios internos existentes o aprovisionados, sin sustituir el modelo de permisos propio.
+- El pipeline sigue aislado detrás de `processor_adapter`; autenticación y permisos pertenecen a la capa API.
 
 ## Estados
 

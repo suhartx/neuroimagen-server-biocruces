@@ -13,3 +13,25 @@ Si el estado es `Fallido`, avisa al administrador y no uses ese resultado.
 El PDF técnico lista metadatos, ficheros generados y PNG renderizados automáticamente desde outputs NIfTI mediante FSL `slicer`. No es un informe clínico validado y no debe usarse para tomar decisiones médicas sin revisión profesional.
 
 Si el estado aparece como completado con avisos, el procesamiento principal terminó pero algún NIfTI pudo no renderizarse a PNG. En ese caso revisa el PDF y avisa al administrador si faltan imágenes esperadas.
+
+## Funcionalidades Futuras Previstas
+
+La versión actual no tiene login ni separación por usuario. La siguiente fase prevista añadirá:
+
+- Página de login.
+- Usuarios creados por admin.
+- Roles `admin` y `researcher`.
+- Sección “Mis estudios”.
+- Historial propio por usuario.
+- Protección de descargas para que cada usuario acceda solo a sus estudios.
+
+Páginas futuras recomendadas:
+
+- Login.
+- Mis estudios.
+- Detalle de estudio.
+- Dashboard admin.
+- Gestión básica de usuarios.
+- Ajustes admin.
+
+Quedan para fases posteriores la compartición mediante enlaces, notificaciones por email, subida múltiple, retención automática y revisión clínica formal.

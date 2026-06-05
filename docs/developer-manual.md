@@ -52,3 +52,38 @@ El significado de cada variable de `.env` está documentado en `docs/configurati
 - Actualizar tests ante cambios funcionales.
 - Actualizar docs si cambia arquitectura, API, despliegue o pipeline.
 - Documentar cambios de tooling frontend cuando afecten instalación, lint o estructura de componentes.
+
+## Próxima Fase Recomendada: Multiusuario Básico
+
+La siguiente implementación funcional debería introducir login local, roles `admin`/`researcher`, propietario por estudio e historial por usuario. No conviene empezar por Google, ORCID, sharing, email, cuotas o pipelines configurables avanzados porque todos dependen de identidad y permisos.
+
+Orden técnico sugerido:
+
+1. Crear modelo `User` y migración Alembic.
+2. Definir creación del primer admin.
+3. Implementar hashing de contraseña y login local.
+4. Implementar sesión o JWT con expiración y documentar la elección.
+5. Añadir `owner_user_id` a `Study` y migrar estudios existentes a usuario `system` o admin.
+6. Proteger endpoints y aplicar filtros por propietario.
+7. Ampliar auditoría con `actor_user_id`.
+8. Adaptar frontend a login, sesión y “Mis estudios”.
+9. Añadir tests de permisos antes de continuar con dashboard, sharing o borrado.
+
+Permisos mínimos esperados:
+
+- `admin`: puede ver todos los estudios, gestionar usuarios y acceder a vista administrativa.
+- `researcher`: puede subir, listar, ver y descargar solo estudios propios.
+- Usuario no autenticado: no puede acceder a endpoints sensibles.
+
+Fuera de la primera implementación:
+
+- Google/OIDC.
+- ORCID.
+- Rol `viewer` completo.
+- Compartición mediante links.
+- Email.
+- Retención automática.
+- Multiple upload.
+- Cancelación de jobs en ejecución.
+- 2FA.
+- Cuotas.
