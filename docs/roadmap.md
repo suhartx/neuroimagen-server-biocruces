@@ -4,9 +4,9 @@ Este roadmap ordena la evolución funcional de la plataforma desde el estado act
 
 ## Estado Del Proyecto
 
-La plataforma actual permite subir un estudio T1w `.nii.gz`, preparar BIDS, encolar procesamiento con Celery/Redis, ejecutar el worker `compneuro`, renderizar NIfTI a PNG con FSL `slicer`, generar artefactos técnicos y descargar resultados.
+La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos, descarga de resultados según permisos, gestión básica de jobs y dashboard operativo para admin.
 
-Todavía no existen usuarios, login, roles, permisos por propietario, compartición, notificaciones, borrado controlado, retención automática ni dashboard administrativo.
+Todavía no existen compartición segura mediante enlaces, notificaciones, backups/restore automatizados, retención automática, cuotas, pipelines seleccionables desde GUI ni revisión clínica formal.
 
 ## Roadmap de evolución funcional
 
@@ -32,9 +32,11 @@ Criterios de aceptación ya cubiertos:
 
 ### Fase 1 — Multiusuario Básico
 
+Estado: implementada como base funcional.
+
 Objetivo: introducir identidad, propiedad de estudios y permisos mínimos sin cambiar el pipeline de procesamiento.
 
-Alcance recomendado:
+Alcance implementado:
 
 - Login local.
 - Usuarios creados por admin; sin registro público abierto.
@@ -75,9 +77,11 @@ Criterios de aceptación:
 
 ### Fase 2 — Gestión De Jobs Y Trazabilidad
 
+Estado: implementada como base funcional.
+
 Objetivo: mejorar control operativo de jobs sin introducir todavía administración avanzada.
 
-Alcance recomendado:
+Alcance implementado:
 
 - Estados de job más detallados, sin porcentajes falsos.
 - Logs visibles en GUI con truncado.
@@ -112,7 +116,9 @@ Criterios de aceptación:
 
 Objetivo: dar al administrador visibilidad operativa mínima.
 
-Alcance recomendado:
+Estado implementado: dashboard básico accesible solo para `admin` mediante la GUI y `GET /api/admin/dashboard`.
+
+Alcance implementado:
 
 - Estado de cola.
 - Jobs activos y fallidos.
@@ -359,119 +365,35 @@ Criterios de aceptación:
 
 ## Priorización Recomendada
 
-La próxima fase óptima es **Fase 1 — Multiusuario Básico**.
+La próxima fase óptima es **Fase 4 — Backups Y Mantenimiento**.
 
 Justificación:
 
-- Es la base para historial, permisos, sharing, auditoría, borrado seguro y administración.
-- Sin usuarios no hay separación de estudios.
-- Sin owner por estudio no se puede hacer historial correcto ni permisos.
-- Es mejor resolver identidad y autorización antes que notificaciones, cuotas, sharing o dashboard avanzado.
+- La Fase 1 ya establece identidad, roles, propietario por estudio e historial básico.
+- La Fase 2 ya añade detalle de job, logs truncados, cancelación de jobs en cola, retry y borrado seguro.
+- La Fase 3 ya aporta visibilidad operativa global para admin.
+- Conviene asegurar backup y restore local antes que sharing, notificaciones o integración institucional.
 
 Orden óptimo de implementación tras cerrar este roadmap:
 
-1. Fase 1: identidad, roles, owner y permisos.
-2. Fase 2: jobs, logs, cancelación queued, retry y borrado seguro.
-3. Fase 3: dashboard admin básico.
-4. Fase 4: backups y restore local.
-5. Fase 5: sharing seguro.
-6. Fase 6: notificaciones.
-7. Fase 7: multiple upload y batches.
-8. Fase 8: retención, cuotas y almacenamiento.
-9. Fase 9: pipelines configurables.
-10. Fase 10: integración institucional.
-11. Fase 11: revisión clínica.
+1. Fase 4: backups y restore local.
+2. Fase 5: sharing seguro.
+3. Fase 6: notificaciones.
+4. Fase 7: multiple upload y batches.
+5. Fase 8: retención, cuotas y almacenamiento.
+6. Fase 9: pipelines configurables.
+7. Fase 10: integración institucional.
+8. Fase 11: revisión clínica.
 
-## Plan Técnico De Fase 1
+## Histórico Implementado
 
-### Backend
+Las fases 1, 2 y 3 ya están implementadas como base funcional:
 
-- Crear modelo `User`.
-- Implementar password hashing robusto.
-- Implementar login local.
-- Implementar logout.
-- Implementar endpoint de usuario actual.
-- Implementar roles `admin` y `researcher`.
-- Añadir owner en `Study` mediante `owner_user_id`.
-- Proteger endpoints de subida, listado, detalle, estado y descarga.
-- Migrar estudios existentes a usuario `system` o admin inicial.
-- Crear o ampliar `AuditEvent` para login, upload y download con `actor_user_id`.
-- Añadir tests de permisos.
+- Fase 1: login local, roles `admin`/`researcher`, propietario por estudio, creación de usuarios por admin y permisos por endpoint.
+- Fase 2: detalle de jobs, logs truncados, cancelación de jobs en cola, retry de fallidos, soft delete, borrado físico controlado y auditoría mínima.
+- Fase 3: dashboard admin con cola, jobs activos/fallidos, uso de disco, healthchecks, usuarios, estudios por estado y alertas no bloqueantes.
 
-### Frontend
-
-- Crear página de login.
-- Mantener estado de sesión.
-- Mostrar sección “Mis estudios”.
-- Ocultar estudios ajenos a usuarios `researcher`.
-- Mostrar vista admin básica si el usuario es `admin`.
-- Mantener mensajes en castellano.
-
-### Base De Datos
-
-Modelo `User` sugerido:
-
-- `id`
-- `email`
-- `full_name`
-- `hashed_password`
-- `role`
-- `is_active`
-- `created_at`
-- `updated_at`
-- `last_login_at`
-
-Cambios sugeridos en `Study`:
-
-- `owner_user_id`
-- `deleted_at` opcional futuro.
-
-Cambios sugeridos en `AuditEvent`:
-
-- `actor_user_id`
-- `event_type`
-- `study_id`
-- `timestamp`
-- `ip_address` opcional.
-- `details`
-
-### Seguridad
-
-- No guardar passwords en texto plano.
-- Usar hashing robusto.
-- No exponer errores de login detallados.
-- Usar sesiones o JWT con expiración.
-- Documentar la decisión cookie/JWT antes de implementarla.
-- Preparar compatibilidad futura con Google/OIDC.
-- Preparar dominios institucionales permitidos como configuración futura.
-- No habilitar registro público abierto en la primera implementación.
-
-### Tests Mínimos
-
-- Crear usuario admin inicial.
-- Login correcto.
-- Login incorrecto.
-- `researcher` solo ve sus estudios.
-- `admin` ve todos los estudios.
-- Usuario no autenticado no accede a endpoints protegidos.
-- Propietario puede ver y descargar su estudio.
-- Usuario no propietario no puede ver ni descargar estudio ajeno.
-- Audit event en login.
-- Audit event en upload.
-- Migración de estudios existentes a usuario `system` o admin.
-
-### Criterios De Aceptación
-
-- Existe login local funcional.
-- Existe al menos un usuario admin inicial.
-- Los estudios tienen propietario.
-- Los usuarios `researcher` solo ven sus propios estudios.
-- `admin` ve todos los estudios.
-- Los endpoints sensibles están protegidos.
-- La GUI muestra historial por usuario.
-- La documentación explica cómo crear usuarios y cómo funcionan roles/permisos.
-- Tests básicos pasan.
-- Se mantiene compatibilidad técnica con el pipeline `compneuro`.
+Los detalles técnicos vivos están en `docs/architecture.md`, `docs/api.md`, `docs/developer-manual.md` y los tests.
 
 ## No Implementar Todavía
 
@@ -488,11 +410,9 @@ Cambios sugeridos en `AuditEvent`:
 - Cuotas.
 - Anonimización DICOM real.
 
-## Decisiones Pendientes Antes De Fase 1
+## Decisiones Pendientes
 
-- Elegir cookie session o JWT simple.
-- Definir cómo se crea el primer admin.
-- Definir si `AuditEvent.actor` se conserva como compatibilidad o se reemplaza gradualmente por `actor_user_id`.
-- Definir permisos exactos para cancelar y borrar jobs.
-- Definir texto de errores de login y expiración de sesión.
-- Decidir si el usuario `system` es visible en dashboard admin.
+- Evaluar si conviene migrar de JWT en localStorage a cookie `HttpOnly` antes de exposición real.
+- Definir si `AuditEvent.actor` textual se conserva como compatibilidad o se elimina en una migración futura.
+- Decidir si el usuario `system` debe ocultarse del dashboard admin.
+- Definir política de backups, restore y retención antes de usar datos sensibles.

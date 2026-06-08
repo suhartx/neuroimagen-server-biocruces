@@ -18,6 +18,20 @@ Tests actuales:
 - descarga del PDF técnico desde API.
 - comportamiento sin NIfTI y con fallo de renderizado.
 - generación de PDF técnico y ZIP.
+- login correcto e incorrecto.
+- protección de endpoints para usuario no autenticado.
+- permisos `admin`/`researcher`.
+- historial filtrado por propietario.
+- descarga permitida para propietario y bloqueada para no propietario.
+- auditoría de login y upload con usuario actor.
+- detalle de estudio con jobs.
+- logs truncados.
+- cancelación de jobs en cola.
+- retry de jobs fallidos.
+- soft delete y borrado físico de carpeta de estudio.
+- bloqueo de borrado para estudios en procesamiento.
+- dashboard admin con resumen operativo.
+- bloqueo de dashboard admin para `researcher`.
 
 Ejecutar:
 
@@ -41,7 +55,7 @@ npm run lint
 
 El lint frontend usa `frontend/eslint.config.js`, compatible con ESLint 9. `package-lock.json` debe mantenerse actualizado cuando cambien dependencias frontend.
 
-No se ejecuta build automáticamente por decisión del proyecto.
+No se ejecuta build automáticamente por decisión del proyecto. Si se necesita comprobar el bundle frontend manualmente, usar `npm run build` desde `frontend/`; si se usa Docker/Nginx, reconstruir con `make frontend-rebuild`.
 
 ## Test Manual Lento
 
@@ -62,20 +76,4 @@ Si esa carpeta local no existe, usar cualquier T1w `.nii.gz` anonimizado disponi
 
 En una prueba local con el worker compneuro reconstruido se procesó un T1w `.nii.gz` de ejemplo. El estudio terminó en estado `completed`, generó `output/Preproc`, 18 PNG en `output/rendered_png/`, `output/reports/technical_report.pdf` y `output/outputs.zip`, sin avisos de renderizado registrados.
 
-## Tests Futuros Para Fase 1
-
-Cuando se implemente multiusuario básico, añadir como mínimo:
-
-- Crear usuario admin inicial.
-- Login correcto.
-- Login incorrecto.
-- `researcher` solo ve sus estudios.
-- `admin` ve todos los estudios.
-- Usuario no autenticado no accede a endpoints protegidos.
-- Propietario puede ver y descargar su estudio.
-- Usuario no propietario no puede ver ni descargar estudio ajeno.
-- Audit event en login.
-- Audit event en upload.
-- Migración de estudios existentes a usuario `system` o admin.
-
-Estos tests deben ejecutarse junto a `make test` y no deben requerir el pipeline real `compneuro`.
+Los tests de multiusuario no requieren el pipeline real `compneuro`; usan SQLite temporal, procesador dummy y tareas Celery simuladas.

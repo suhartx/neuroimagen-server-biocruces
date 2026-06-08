@@ -6,7 +6,20 @@
 - `make down`: parar servicios.
 - `make logs`: inspeccionar logs.
 - `make smoke`: comprobar healthcheck.
+- `make create-admin EMAIL=admin@example.org`: crear o actualizar el admin inicial.
+- `make frontend-rebuild`: reconstruir y recrear solo el frontend Docker.
+- `make rebuild`: reconstruir y recrear todos los servicios Docker.
 - `make clean`: limpiar volúmenes y estudios locales.
+
+## Usuarios
+
+Tras aplicar migraciones, crear el primer usuario admin:
+
+```bash
+make create-admin EMAIL=admin@example.org
+```
+
+El comando pide contraseña por consola. No hay registro público abierto; los demás usuarios se crean desde la GUI con una cuenta admin.
 
 ## Datos Y Backups
 
@@ -25,6 +38,18 @@ Roadmap operativo recomendado para Fase 4:
 - Documentar ubicación de backups fuera de Git.
 
 El backup útil debe tratar base de datos y filesystem como una unidad lógica. Restaurar solo PostgreSQL o solo `data/studies` puede dejar estudios sin ficheros, ficheros sin metadatos o auditoría incompleta.
+
+## Dashboard Admin
+
+La GUI muestra un dashboard operativo solo para `admin` con:
+
+- estado de cola y jobs fallidos.
+- healthchecks de PostgreSQL, Redis y Worker.
+- uso de disco y bytes registrados en estudios.
+- usuarios y estudios por estado.
+- alertas básicas que no bloquean el procesamiento.
+
+Si Redis o Worker aparecen en `warning` o `down`, revisar `docker compose ps` y `make logs` antes de relanzar trabajos.
 
 ## Mantenimiento
 
@@ -57,14 +82,17 @@ El borrado recomendado combina soft delete en base de datos con borrado físico 
 
 Primero revisar estado en GUI, luego logs del worker, luego `processor.log`. Para `compneuro`, comprobar además que existan `output/Preproc/BET`, `output/Preproc/ProbTissue`, `output/rendered_png/` y `logs/rendering.log`.
 
-## Rerun
+## Retry Y Rerun
 
-La reejecución no está expuesta en GUI. Si se reejecuta manualmente, conservar outputs previos en una carpeta versionada o con timestamp antes de volver a lanzar la tarea.
+El retry de estudios fallidos está expuesto en la GUI y crea un nuevo `ProcessingJob`, conservando trazabilidad del intento anterior.
+
+Si se reejecuta manualmente fuera de la GUI, conservar outputs previos en una carpeta versionada o con timestamp antes de volver a lanzar la tarea.
 
 ## Operación Futura De Jobs
 
-- La cancelación inicial debe limitarse a jobs en cola.
+- La cancelación actual está limitada a jobs en cola.
 - La cancelación de jobs en ejecución queda para fase posterior porque requiere gestionar procesos FSL y `compneuro` con cuidado.
-- El retry de jobs fallidos debe registrar intento previo y limpiar o versionar outputs parciales.
-- Los logs visibles en GUI deben truncarse y evitar rutas internas sensibles.
-- El admin dashboard básico debería mostrar cola, jobs activos/fallidos, uso de disco, healthchecks, worker, Redis, PostgreSQL, usuarios y estudios por estado.
+- El retry de jobs fallidos crea un nuevo `ProcessingJob` y conserva trazabilidad del intento previo.
+- Los logs visibles en GUI se devuelven truncados desde `processor.log` y `rendering.log`.
+- El borrado aplica soft delete en DB y borrado físico de la carpeta del estudio; conserva auditoría mínima.
+- El dashboard admin ya muestra cola, jobs activos/fallidos, uso de disco, healthchecks, worker, Redis, PostgreSQL, usuarios y estudios por estado.

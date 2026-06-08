@@ -55,13 +55,23 @@ Salida:
 - mensaje de error.
 - duración.
 
+El adaptador es la frontera estable entre la plataforma y cualquier procesador externo. La API, la GUI y la cola no deben depender del script concreto ni de la imagen Docker usada para procesar. Si en el futuro se sustituye `compneuro-anatproc`, el cambio debe concentrarse en el adapter, la configuración y, si hace falta, el Dockerfile del worker.
+
 El adaptador elige el comando según `PROCESSOR_BACKEND`. El backend `dummy` ejecuta `PROCESSOR_COMMAND` con placeholders:
 
 ```env
-PROCESSOR_COMMAND=python /app/external_processor/process.py --input {input_dir} --output {output_dir} --study-id {study_id}
+PROCESSOR_COMMAND=python /app/external_processor/dummy_processor.py --input {input_dir} --output {output_dir} --study-id {study_id}
 ```
 
 El adaptador valida entrada, crea salida, captura stdout/stderr y guarda logs. En `dummy` comprueba que se genere al menos un PDF. En `compneuro` ejecuta `COMPNEURO_COMMAND`, por defecto `bash /app/src/apreproc_launcher.sh`, comprueba exit code `0` y valida que existan `Preproc/BET` y `Preproc/ProbTissue`.
+
+Para otro script o contenedor, el contrato mínimo es:
+
+- leer los datos preparados por la plataforma, normalmente bajo `input_dir` o `/project/data` según el backend.
+- escribir resultados en la carpeta de salida esperada, preferiblemente `output/Preproc` para reutilizar el post-procesado actual.
+- terminar con exit code `0` solo si los resultados están completos.
+- escribir stdout/stderr suficiente para diagnóstico; el worker lo guarda en `logs/processor.log`.
+- no generar `outputs.zip` como responsabilidad principal: el ZIP descargable lo crea la plataforma con `processor_adapter/output_packager.py`.
 
 ## BIDS Por Estudio
 
@@ -103,10 +113,12 @@ flowchart TD
   Prob --> Zip
 ```
 
+`src/apreproc_launcher.sh` es el script externo usado hoy. En la imagen worker compneuro queda ubicado en `/app/src/apreproc_launcher.sh`, copiado durante el build desde el repositorio `compneuro-anatproc`. No forma parte del código propio de la plataforma.
+
 ## Post-Procesado Técnico
 
 Después de una ejecución correcta de `compneuro`, el worker busca `.nii` y `.nii.gz` dentro de `output/Preproc`, con límite configurable por `NIFTI_RENDER_MAX_FILES`. Cada fichero se renderiza con FSL `slicer` usando el patrón conceptual `slicer input.nii.gz -a output.png` y se guarda en `output/rendered_png/`.
 
 El PDF se guarda por defecto en `output/reports/technical_report.pdf` e incluye metadatos del estudio, sujeto BIDS, pipeline usado, listado de outputs, nombre de cada NIfTI y la imagen PNG renderizada. Si no hay NIfTI o falla alguna conversión, el PDF se genera igual con avisos técnicos. Estos avisos no son trazas internas y pueden mostrarse en la GUI.
 
-El documento es un informe técnico de artefactos generados. No interpreta imágenes ni constituye un informe clínico validado.
+El documento es un informe técnico de artefactos generados. No interpreta imágenes ni constituye un informe médico validado.

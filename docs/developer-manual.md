@@ -14,12 +14,14 @@ El significado de cada variable de `.env` está documentado en `docs/configurati
 
 - FastAPI en `backend/app`.
 - Modelos en `backend/app/models`.
+- Esquemas Pydantic en `backend/app/schemas`.
 - Migraciones Alembic en `backend/alembic`.
+- El endpoint `GET /api/admin/dashboard` agrega estado operativo para admin sin tocar el pipeline.
 
 ## Worker
 
 - Celery en `worker/`.
-- No añadir lógica clínica al worker; usar `processor_adapter`.
+- No añadir análisis de imagen ni interpretación médica al worker; usar `processor_adapter`.
 - `worker/Dockerfile.compneuro` construye el worker real sobre la imagen de `compneuro-anatproc` y añade dependencias de la plataforma.
 - El post-procesado técnico corre en el mismo worker: renderiza NIfTI con FSL `slicer`, genera PDF y empaqueta outputs.
 - La concurrencia recomendada para `compneuro` es `1`, porque el pipeline usa `/project` como ruta fija.
@@ -42,9 +44,10 @@ El significado de cada variable de `.env` está documentado en `docs/configurati
 ## Frontend
 
 - React/Vite en `frontend/`.
-- UI sencilla, castellano, clara y sin flujos clínicos no implementados.
+- UI sencilla, castellano, clara y sin flujos de revisión médica no implementados.
 - Instalar dependencias con `npm install` desde `frontend/`; el `package-lock.json` fija las versiones resueltas para reproducibilidad.
 - Validar cambios frontend con `npm run lint`; la configuración vive en `frontend/eslint.config.js` y usa el formato flat config de ESLint 9.
+- Si se despliega con Docker/Nginx y cambia el frontend, reconstruir el contenedor con `make frontend-rebuild`.
 
 ## Convenciones
 
@@ -53,21 +56,25 @@ El significado de cada variable de `.env` está documentado en `docs/configurati
 - Actualizar docs si cambia arquitectura, API, despliegue o pipeline.
 - Documentar cambios de tooling frontend cuando afecten instalación, lint o estructura de componentes.
 
-## Próxima Fase Recomendada: Multiusuario Básico
+## Multiusuario Básico
 
-La siguiente implementación funcional debería introducir login local, roles `admin`/`researcher`, propietario por estudio e historial por usuario. No conviene empezar por Google, ORCID, sharing, email, cuotas o pipelines configurables avanzados porque todos dependen de identidad y permisos.
+La plataforma incluye login local con JWT, roles `admin`/`researcher`, propietario por estudio e historial filtrado por permisos.
 
-Orden técnico sugerido:
+Puntos principales:
 
-1. Crear modelo `User` y migración Alembic.
-2. Definir creación del primer admin.
-3. Implementar hashing de contraseña y login local.
-4. Implementar sesión o JWT con expiración y documentar la elección.
-5. Añadir `owner_user_id` a `Study` y migrar estudios existentes a usuario `system` o admin.
-6. Proteger endpoints y aplicar filtros por propietario.
-7. Ampliar auditoría con `actor_user_id`.
-8. Adaptar frontend a login, sesión y “Mis estudios”.
-9. Añadir tests de permisos antes de continuar con dashboard, sharing o borrado.
+- `backend/app/models/user.py`: modelo `User`, roles y usuario `system`.
+- `backend/app/services/auth.py`: hash PBKDF2, JWT, dependencias de usuario actual y admin.
+- `backend/app/cli/create_admin.py`: creación o actualización del admin inicial.
+- `backend/alembic/versions/0004_multiuser_auth.py`: tabla `users`, `owner_user_id` y `actor_user_id`.
+- `frontend/src/main.jsx`: login, sesión, “Mis estudios” y gestión básica de usuarios admin.
+
+Crear el primer admin:
+
+```bash
+make create-admin EMAIL=admin@example.org
+```
+
+La gestión básica de jobs incluye logs truncados, cancelación de jobs en cola, retry de fallidos y borrado seguro. El dashboard admin ya muestra estado global de cola, jobs, almacenamiento, servicios, usuarios y estudios por estado. La siguiente fase recomendada es backups y restore local.
 
 Permisos mínimos esperados:
 
@@ -75,7 +82,7 @@ Permisos mínimos esperados:
 - `researcher`: puede subir, listar, ver y descargar solo estudios propios.
 - Usuario no autenticado: no puede acceder a endpoints sensibles.
 
-Fuera de la primera implementación:
+Fuera de la implementación actual:
 
 - Google/OIDC.
 - ORCID.
@@ -87,3 +94,19 @@ Fuera de la primera implementación:
 - Cancelación de jobs en ejecución.
 - 2FA.
 - Cuotas.
+
+## Cómo Hacer Cambios
+
+Usá esta tabla antes de modificar el sistema. La idea es cambiar lo mínimo correcto y dejar código, tests y docs alineados.
+
+| Cambio | Revisar | Validar |
+| --- | --- | --- |
+| Endpoint API, permisos o respuesta JSON | `backend/app/api/routes.py`, `backend/app/schemas/`, `docs/api.md`, tests en `tests/test_api.py` | `make test`, `make lint` |
+| Modelo persistente | `backend/app/models/`, migración Alembic, `docs/architecture.md`, tests | `make test`, `make lint` |
+| Worker o estados de procesamiento | `worker/tasks.py`, `processor_adapter/`, `docs/processing-pipeline.md`, `docs/operations-manual.md` | `make test`, `make lint` |
+| Procesador externo o Dockerfile del worker | `processor_adapter/`, `worker/Dockerfile.compneuro`, `docs/configuration.md`, `docs/deployment.md` | `make test`, `make lint`, prueba manual si usa `compneuro` real |
+| Frontend | `frontend/src/main.jsx`, `frontend/src/styles.css`, `frontend/README.md`, manual de usuario si cambia el flujo | `npm run lint` desde `frontend/` |
+| Configuración o variables `.env` | `.env.example`, `docker-compose.yml`, `backend/app/core/config.py`, `docs/configuration.md` | `make check-secrets`, `make check-docs` |
+| Documentación pura | README/doc afectado y enlaces cruzados | `make check-docs` |
+
+No leas ni pegues `.env` en conversaciones o commits. No uses datos reales identificativos en fixtures, ejemplos o capturas.

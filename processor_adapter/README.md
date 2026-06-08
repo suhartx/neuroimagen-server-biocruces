@@ -6,7 +6,8 @@ Esta carpeta contiene la frontera obligatoria entre la plataforma web y el scrip
 
 - Tratar el script externo como caja negra.
 - Recibir rutas de entrada, salida, logs e identificador de estudio.
-- Construir el comando CLI desde `PROCESSOR_COMMAND`.
+- Seleccionar backend por `PROCESSOR_BACKEND`.
+- Construir el comando CLI desde `PROCESSOR_COMMAND` en modo `dummy` o `COMPNEURO_COMMAND` en modo `compneuro`.
 - Ejecutar el comando y capturar `stdout`/`stderr`.
 - Guardar logs técnicos.
 - Detectar outputs generados por el backend configurado.
@@ -32,13 +33,23 @@ El resultado contiene:
 - `log_path`: ruta del fichero de log generado.
 - `error_message`: mensaje controlado para diagnóstico.
 - `duration_seconds`: duración total.
+- `output_files`: outputs detectados.
+- `output_zip_path`: ZIP generado por la plataforma, si aplica.
+- `preproc_path`: ruta `output/Preproc` en modo `compneuro`.
+- `warnings`: avisos técnicos no bloqueantes.
 
 ## Seguridad Y Acoplamiento
 
-El adaptador valida que exista el directorio de entrada y crea salida/logs si faltan. No interpreta el contenido médico ni modifica el algoritmo clínico.
+El adaptador valida que exista el directorio de entrada y crea salida/logs si faltan. No interpreta el contenido médico ni modifica el procesador externo.
 
 Ejemplo de comando:
 
 ```env
-PROCESSOR_COMMAND=python /app/external_processor/process.py --input {input_dir} --output {output_dir} --study-id {study_id}
+PROCESSOR_COMMAND=python /app/external_processor/dummy_processor.py --input {input_dir} --output {output_dir} --study-id {study_id}
+```
+
+Para `compneuro`, el comando por defecto es:
+
+```env
+COMPNEURO_COMMAND=bash /app/src/apreproc_launcher.sh
 ```

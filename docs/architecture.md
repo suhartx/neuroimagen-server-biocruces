@@ -1,6 +1,6 @@
 # Arquitectura
 
-El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo clínico. El procesador externo se invoca mediante `processor_adapter` como caja negra y puede seleccionarse por configuración (`dummy` o `compneuro`).
+El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo concreto de procesamiento. El procesador externo se invoca mediante `processor_adapter` como caja negra y puede seleccionarse por configuración (`dummy` o `compneuro`).
 
 ```mermaid
 flowchart TB
@@ -41,6 +41,8 @@ Para `compneuro-anatproc`, el servicio `worker` puede construirse con `worker/Do
 
 No existe un contenedor `compneuro-anatproc` anidado dentro del `worker`. El `worker` es una imagen derivada de `compneurobilbaolab/compneuro-anatproc:1.1`; por eso ejecuta directamente los scripts y herramientas de neuroimagen dentro del mismo contenedor.
 
+Esta decisión no obliga a usar siempre esa imagen ni ese launcher. La frontera mantenible es `processor_adapter`: un futuro procesador puede usar otro script o un worker construido desde otra imagen si respeta el contrato de entrada/salida y deja a la plataforma la trazabilidad, el PDF técnico y el ZIP descargable.
+
 ## Componentes
 
 - `frontend`: interfaz simple para subida, listado, estado y descarga.
@@ -54,14 +56,28 @@ No existe un contenedor `compneuro-anatproc` anidado dentro del `worker`. El `wo
 
 ## Modelo ER
 
-El modelo siguiente refleja el estado implementado actualmente. La evolución multiusuario prevista se documenta después como arquitectura objetivo, no como funcionalidad disponible.
+El modelo siguiente refleja el estado implementado actualmente, incluyendo autenticación local y propietario por estudio.
 
 ```mermaid
 erDiagram
+  User ||--o{ Study : owns
+  User ||--o{ AuditEvent : performs
   Study ||--o{ ProcessingJob : has
   Study ||--o{ AuditEvent : emits
+  User {
+    uuid id PK
+    string email
+    string full_name
+    text hashed_password
+    string role
+    bool is_active
+    datetime created_at
+    datetime updated_at
+    datetime last_login_at
+  }
   Study {
     uuid id PK
+    uuid owner_user_id FK
     string original_filename
     text stored_path
     text output_path
@@ -79,6 +95,7 @@ erDiagram
     datetime updated_at
     datetime processing_started_at
     datetime processing_finished_at
+    datetime deleted_at
     text error_message
     string processor_name
     string processor_version
@@ -88,6 +105,7 @@ erDiagram
   ProcessingJob {
     uuid id PK
     uuid study_id FK
+    string celery_task_id
     string status
     datetime queued_at
     datetime started_at
@@ -101,6 +119,7 @@ erDiagram
   AuditEvent {
     uuid id PK
     uuid study_id FK
+    uuid actor_user_id FK
     string event_type
     datetime timestamp
     text details
@@ -109,53 +128,24 @@ erDiagram
   }
 ```
 
-## Arquitectura Objetivo Multiusuario
+## Arquitectura Multiusuario
 
-La próxima evolución recomendada es introducir identidad y autorización en la API antes de construir sharing, retención, notificaciones o dashboard avanzado.
+La API aplica autenticación y autorización antes de operar sobre estudios. El worker no conoce sesiones ni roles: recibe IDs de estudios ya validados por la API y conserva la frontera con `processor_adapter`.
 
-Modelo objetivo inicial:
+Reglas implementadas:
 
-```mermaid
-erDiagram
-  User ||--o{ Study : owns
-  User ||--o{ AuditEvent : performs
-  Study ||--o{ ProcessingJob : has
-  Study ||--o{ AuditEvent : emits
-  User {
-    uuid id PK
-    string email
-    string full_name
-    string hashed_password
-    enum role
-    bool is_active
-    datetime created_at
-    datetime updated_at
-    datetime last_login_at
-  }
-  Study {
-    uuid id PK
-    uuid owner_user_id FK
-    datetime deleted_at
-  }
-  AuditEvent {
-    uuid id PK
-    uuid actor_user_id FK
-    uuid study_id FK
-    string event_type
-    datetime timestamp
-    string ip_address
-    text details
-  }
-```
-
-Reglas objetivo:
-
-- `admin` puede ver todos los estudios, gestionar usuarios y acceder al dashboard administrativo.
-- `researcher` puede subir estudios, ver historial propio, descargar resultados propios y consultar logs propios limitados.
-- Los usuarios iniciales deben ser creados por admin; no se recomienda registro público abierto para la primera fase.
-- Un rol `viewer` completo no entra en la primera implementación. La compartición futura debería resolverse con enlaces firmados, caducidad, revocación y auditoría.
-- Google/OIDC y ORCID deben vincularse a usuarios internos existentes o aprovisionados, sin sustituir el modelo de permisos propio.
+- `admin` puede ver todos los estudios y crear usuarios.
+- `admin` puede consultar el dashboard operativo global con cola, jobs, uso de disco, healthchecks, usuarios y estudios por estado.
+- `researcher` puede subir estudios, ver historial propio y descargar resultados propios.
+- Los usuarios iniciales se crean por admin; no hay registro público abierto.
+- El usuario admin inicial se crea con `make create-admin EMAIL=...`.
 - El pipeline sigue aislado detrás de `processor_adapter`; autenticación y permisos pertenecen a la capa API.
+
+Evolución posterior:
+
+- Un rol `viewer` completo no entra en la implementación actual. La compartición futura debe resolverse con enlaces firmados, caducidad, revocación y auditoría.
+- Google/OIDC y ORCID deben vincularse a usuarios internos existentes o aprovisionados, sin sustituir el modelo de permisos propio.
+- Backups, restore local y mantenimiento operativo quedan para una fase posterior.
 
 ## Estados
 
@@ -171,6 +161,8 @@ stateDiagram-v2
 ```
 
 Estados futuros documentados: `review_pending`, `reviewed`, `rejected`, `archived`.
+
+La cancelación implementada se limita a trabajos en cola y usa el estado `canceled`. La cancelación de procesos ya en ejecución queda fuera porque requiere gestionar de forma segura procesos externos de FSL/`compneuro`.
 
 No se añade un estado `bids_prepared` en la primera integración: la preparación BIDS ocurre antes de encolar y queda trazada mediante campos y auditoría. Si falla, la subida responde con error y no crea un estudio procesable.
 
@@ -194,10 +186,12 @@ flowchart LR
 
 No se mantiene una copia local de `compneuro-anatproc/` como dependencia del proyecto. El worker real parte de la imagen Docker publicada y, durante el build, copia únicamente los scripts versionados necesarios para ejecutar `src/apreproc_launcher.sh`.
 
+Para reemplazar el procesador, no hace falta modificar FastAPI ni la GUI si se mantiene el contrato. El punto de extensión esperado es crear o ajustar un adapter, cambiar `PROCESSOR_BACKEND`/comando, y construir un worker que incluya las herramientas necesarias.
+
 ## Decisiones Arquitectónicas
 
 - La API no ejecuta procesamiento de neuroimagen; valida, prepara datos, registra el estudio y encola la tarea.
 - Celery ejecuta el procesamiento largo fuera del ciclo HTTP para evitar bloqueos y permitir trazabilidad de estados.
-- `processor_adapter` mantiene al procesador externo como caja negra y evita acoplar FastAPI al pipeline clínico.
+- `processor_adapter` mantiene al procesador externo como caja negra y evita acoplar FastAPI al pipeline de neuroimagen concreto.
 - El post-procesado técnico se ejecuta en el mismo worker porque FSL ya está disponible y se evitan contenedores, volúmenes y sincronización adicionales.
-- El PDF generado es técnico y no contiene interpretación clínica ni conclusiones médicas.
+- El PDF generado es técnico y no contiene interpretación de imagen ni conclusiones médicas.

@@ -40,12 +40,20 @@ class Settings(BaseSettings):
     technical_report_filename: str = "technical_report.pdf"
     bids_validate: bool = False
     cors_origins: str = "http://localhost,http://localhost:5173"
+    auth_secret_key: str = "change-me-in-production"
+    auth_access_token_expire_minutes: int = 480
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     @property
     def allowed_extension_list(self) -> list[str]:
-        return [item.strip().lower() for item in self.allowed_extensions.split(",") if item.strip()]
+        return [
+            item.strip().lower()
+            for item in self.allowed_extensions.split(",")
+            if item.strip()
+        ]
 
     @property
     def max_upload_size_bytes(self) -> int:
@@ -54,6 +62,12 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+
+    def validate_api_auth_settings(self) -> None:
+        if self.environment == "development":
+            return
+        if self.auth_secret_key == "change-me-in-production" or len(self.auth_secret_key) < 32:
+            raise RuntimeError("AUTH_SECRET_KEY debe configurarse con una clave propia fuera de development")
 
 
 @lru_cache
