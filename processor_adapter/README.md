@@ -4,13 +4,13 @@ Esta carpeta contiene la frontera obligatoria entre la plataforma web y el scrip
 
 ## Responsabilidad
 
-- Tratar el script externo como caja negra.
+- Tratar el script externo como componente aislado.
 - Recibir rutas de entrada, salida, logs e identificador de estudio.
 - Seleccionar backend por `PROCESSOR_BACKEND`.
 - Construir el comando CLI desde `PROCESSOR_COMMAND` en modo `dummy` o `COMPNEURO_COMMAND` en modo `compneuro`.
 - Ejecutar el comando y capturar `stdout`/`stderr`.
 - Guardar logs técnicos.
-- Detectar outputs generados por el backend configurado.
+- Detectar resultados generados por el backend configurado.
 - Renderizar NIfTI a PNG y generar artefactos técnicos cuando lo pide el worker.
 - Devolver un resultado estructurado al worker.
 
@@ -19,7 +19,7 @@ Esta carpeta contiene la frontera obligatoria entre la plataforma web y el scrip
 - `adapter.py`: define `ProcessorAdapter` y `ProcessorResult`.
 - `nifti_renderer.py`: busca `.nii`/`.nii.gz` en `Preproc` y ejecuta FSL `slicer`.
 - `technical_pdf_report.py`: genera el PDF técnico con metadatos e imágenes PNG.
-- `output_packager.py`: genera ZIP de outputs con rutas relativas.
+- `output_packager.py`: genera ZIP de resultados con rutas relativas.
 - `artifacts.py`: mantiene compatibilidad con imports previos.
 - `__init__.py`: exporta las clases públicas del paquete.
 
@@ -33,7 +33,7 @@ El resultado contiene:
 - `log_path`: ruta del fichero de log generado.
 - `error_message`: mensaje controlado para diagnóstico.
 - `duration_seconds`: duración total.
-- `output_files`: outputs detectados.
+- `output_files`: resultados detectados.
 - `output_zip_path`: ZIP generado por la plataforma, si aplica.
 - `preproc_path`: ruta `output/Preproc` en modo `compneuro`.
 - `warnings`: avisos técnicos no bloqueantes.

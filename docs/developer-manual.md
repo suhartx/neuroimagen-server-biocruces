@@ -16,23 +16,23 @@ El significado de cada variable de `.env` está documentado en `docs/configurati
 - Modelos en `backend/app/models`.
 - Esquemas Pydantic en `backend/app/schemas`.
 - Migraciones Alembic en `backend/alembic`.
-- El endpoint `GET /api/admin/dashboard` agrega estado operativo para admin sin tocar el pipeline.
+- El endpoint `GET /api/admin/dashboard` agrega estado operativo para admin sin tocar el flujo de procesamiento.
 
 ## Worker
 
 - Celery en `worker/`.
 - No añadir análisis de imagen ni interpretación médica al worker; usar `processor_adapter`.
 - `worker/Dockerfile.compneuro` construye el worker real sobre la imagen de `compneuro-anatproc` y añade dependencias de la plataforma.
-- El post-procesado técnico corre en el mismo worker: renderiza NIfTI con FSL `slicer`, genera PDF y empaqueta outputs.
-- La concurrencia recomendada para `compneuro` es `1`, porque el pipeline usa `/project` como ruta fija.
+- El post-procesado técnico corre en el mismo worker: renderiza NIfTI con FSL `slicer`, genera PDF y empaqueta resultados.
+- La concurrencia recomendada para `compneuro` es `1`, porque el flujo usa `/project` como ruta fija.
 
 ## Processor Adapter
 
 - `processor_adapter.adapter.DummyProcessorAdapter`: mantiene el procesador de desarrollo con PDF.
 - `processor_adapter.adapter.CompneuroAnatprocAdapter`: prepara `/project`, ejecuta `src/apreproc_launcher.sh` y valida `Preproc/BET` y `Preproc/ProbTissue`.
 - `processor_adapter.nifti_renderer`: encuentra `.nii`/`.nii.gz` en `Preproc` y ejecuta `slicer input -a output.png`.
-- `processor_adapter.technical_pdf_report`: genera el PDF técnico con metadatos, listado de outputs y PNG renderizados.
-- `processor_adapter.output_packager`: genera el ZIP de outputs con rutas relativas.
+- `processor_adapter.technical_pdf_report`: genera el PDF técnico con metadatos, listado de resultados y PNG renderizados.
+- `processor_adapter.output_packager`: genera el ZIP de resultados con rutas relativas.
 - `processor_adapter.artifacts`: puente de compatibilidad para imports existentes.
 
 ## BIDS
@@ -53,7 +53,7 @@ El significado de cada variable de `.env` está documentado en `docs/configurati
 
 - Conventional Commits.
 - Actualizar tests ante cambios funcionales.
-- Actualizar docs si cambia arquitectura, API, despliegue o pipeline.
+- Actualizar docs si cambia arquitectura, API, despliegue o flujo de procesamiento.
 - Documentar cambios de tooling frontend cuando afecten instalación, lint o estructura de componentes.
 
 ## Multiusuario Básico

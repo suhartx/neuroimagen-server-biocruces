@@ -25,7 +25,7 @@ sequenceDiagram
   W->>P: run(input, output, study_id, logs, bids_project)
   P->>S: Ejecuta backend configurado
   S->>FS: Genera PDF dummy o Preproc
-  P-->>W: Resultado y outputs detectados
+  P-->>W: Resultado y ficheros generados detectados
   W->>FS: Renderiza NIfTI con FSL slicer
   W->>FS: Genera PDF tecnico y ZIP si aplica
   W->>D: completed o failed
@@ -49,7 +49,7 @@ Salida:
 - código de salida.
 - ruta del PDF, si el backend lo genera o si la plataforma crea un PDF técnico.
 - rutas de PNG renderizados desde NIfTI, si aplica.
-- lista de outputs.
+- lista de ficheros generados.
 - ruta del ZIP, si aplica.
 - log técnico.
 - mensaje de error.
@@ -65,7 +65,7 @@ PROCESSOR_COMMAND=python /app/external_processor/dummy_processor.py --input {inp
 
 El adaptador valida entrada, crea salida, captura stdout/stderr y guarda logs. En `dummy` comprueba que se genere al menos un PDF. En `compneuro` ejecuta `COMPNEURO_COMMAND`, por defecto `bash /app/src/apreproc_launcher.sh`, comprueba exit code `0` y valida que existan `Preproc/BET` y `Preproc/ProbTissue`.
 
-Para otro script o contenedor, el contrato mínimo es:
+Para otro script o contenedor, la interfaz mínima esperada por la plataforma es:
 
 - leer los datos preparados por la plataforma, normalmente bajo `input_dir` o `/project/data` según el backend.
 - escribir resultados en la carpeta de salida esperada, preferiblemente `output/Preproc` para reutilizar el post-procesado actual.
@@ -119,6 +119,6 @@ flowchart TD
 
 Después de una ejecución correcta de `compneuro`, el worker busca `.nii` y `.nii.gz` dentro de `output/Preproc`, con límite configurable por `NIFTI_RENDER_MAX_FILES`. Cada fichero se renderiza con FSL `slicer` usando el patrón conceptual `slicer input.nii.gz -a output.png` y se guarda en `output/rendered_png/`.
 
-El PDF se guarda por defecto en `output/reports/technical_report.pdf` e incluye metadatos del estudio, sujeto BIDS, pipeline usado, listado de outputs, nombre de cada NIfTI y la imagen PNG renderizada. Si no hay NIfTI o falla alguna conversión, el PDF se genera igual con avisos técnicos. Estos avisos no son trazas internas y pueden mostrarse en la GUI.
+El PDF se guarda por defecto en `output/reports/technical_report.pdf` e incluye metadatos del estudio, sujeto BIDS, flujo de procesamiento usado, listado de resultados, nombre de cada NIfTI y la imagen PNG renderizada. Si no hay NIfTI o falla alguna conversión, el PDF se genera igualmente con avisos técnicos. Estos avisos no son trazas internas y pueden mostrarse en la GUI.
 
 El documento es un informe técnico de artefactos generados. No interpreta imágenes ni constituye un informe médico validado.

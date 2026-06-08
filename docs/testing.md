@@ -76,4 +76,4 @@ Si esa carpeta local no existe, usar cualquier T1w `.nii.gz` anonimizado disponi
 
 En una prueba local con el worker compneuro reconstruido se procesó un T1w `.nii.gz` de ejemplo. El estudio terminó en estado `completed`, generó `output/Preproc`, 18 PNG en `output/rendered_png/`, `output/reports/technical_report.pdf` y `output/outputs.zip`, sin avisos de renderizado registrados.
 
-Los tests de multiusuario no requieren el pipeline real `compneuro`; usan SQLite temporal, procesador dummy y tareas Celery simuladas.
+Los tests de multiusuario no requieren el flujo real `compneuro`; usan SQLite temporal, procesador dummy y tareas Celery simuladas.

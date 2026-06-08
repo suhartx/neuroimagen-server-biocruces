@@ -1,6 +1,6 @@
 # Arquitectura
 
-El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo concreto de procesamiento. El procesador externo se invoca mediante `processor_adapter` como caja negra y puede seleccionarse por configuración (`dummy` o `compneuro`).
+El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo concreto de procesamiento. El procesador externo se invoca mediante `processor_adapter` como componente aislado y puede seleccionarse por configuración (`dummy` o `compneuro`).
 
 ```mermaid
 flowchart TB
@@ -41,14 +41,14 @@ Para `compneuro-anatproc`, el servicio `worker` puede construirse con `worker/Do
 
 No existe un contenedor `compneuro-anatproc` anidado dentro del `worker`. El `worker` es una imagen derivada de `compneurobilbaolab/compneuro-anatproc:1.1`; por eso ejecuta directamente los scripts y herramientas de neuroimagen dentro del mismo contenedor.
 
-Esta decisión no obliga a usar siempre esa imagen ni ese launcher. La frontera mantenible es `processor_adapter`: un futuro procesador puede usar otro script o un worker construido desde otra imagen si respeta el contrato de entrada/salida y deja a la plataforma la trazabilidad, el PDF técnico y el ZIP descargable.
+Esta decisión no obliga a usar siempre esa imagen ni ese launcher. La frontera mantenible es `processor_adapter`: un futuro procesador puede usar otro script o un worker construido desde otra imagen si respeta la interfaz de entrada y salida esperada, y deja a la plataforma la trazabilidad, el PDF técnico y el ZIP descargable.
 
 ## Componentes
 
 - `frontend`: interfaz simple para subida, listado, estado y descarga.
 - `api`: valida entradas, registra estudios, prepara BIDS, expone OpenAPI y descarga PDFs/ZIPs.
 - `worker`: ejecuta tareas largas fuera del ciclo HTTP.
-- `processor_adapter`: contrato estable con el procesador externo y estrategia por backend.
+- `processor_adapter`: interfaz estable con el procesador externo y estrategia por backend.
 - `postgres`: persistencia relacional.
 - `redis`: cola de tareas.
 - `filesystem`: almacenamiento inicial sustituible por S3/MinIO futuro.
@@ -139,7 +139,7 @@ Reglas implementadas:
 - `researcher` puede subir estudios, ver historial propio y descargar resultados propios.
 - Los usuarios iniciales se crean por admin; no hay registro público abierto.
 - El usuario admin inicial se crea con `make create-admin EMAIL=...`.
-- El pipeline sigue aislado detrás de `processor_adapter`; autenticación y permisos pertenecen a la capa API.
+- El flujo de procesamiento sigue aislado detrás de `processor_adapter`; autenticación y permisos pertenecen a la capa API.
 
 Evolución posterior:
 
@@ -186,12 +186,12 @@ flowchart LR
 
 No se mantiene una copia local de `compneuro-anatproc/` como dependencia del proyecto. El worker real parte de la imagen Docker publicada y, durante el build, copia únicamente los scripts versionados necesarios para ejecutar `src/apreproc_launcher.sh`.
 
-Para reemplazar el procesador, no hace falta modificar FastAPI ni la GUI si se mantiene el contrato. El punto de extensión esperado es crear o ajustar un adapter, cambiar `PROCESSOR_BACKEND`/comando, y construir un worker que incluya las herramientas necesarias.
+Para reemplazar el procesador, no hace falta modificar FastAPI ni la GUI si se mantiene la interfaz esperada. El punto de extensión previsto es crear o ajustar un adapter, cambiar `PROCESSOR_BACKEND`/comando, y construir un worker que incluya las herramientas necesarias.
 
 ## Decisiones Arquitectónicas
 
 - La API no ejecuta procesamiento de neuroimagen; valida, prepara datos, registra el estudio y encola la tarea.
 - Celery ejecuta el procesamiento largo fuera del ciclo HTTP para evitar bloqueos y permitir trazabilidad de estados.
-- `processor_adapter` mantiene al procesador externo como caja negra y evita acoplar FastAPI al pipeline de neuroimagen concreto.
+- `processor_adapter` mantiene al procesador externo como componente aislado y evita acoplar FastAPI al flujo de procesamiento de neuroimagen concreto.
 - El post-procesado técnico se ejecuta en el mismo worker porque FSL ya está disponible y se evitan contenedores, volúmenes y sincronización adicionales.
 - El PDF generado es técnico y no contiene interpretación de imagen ni conclusiones médicas.

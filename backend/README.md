@@ -21,7 +21,7 @@ Esta carpeta contiene la API HTTP del sistema. Está implementada con FastAPI y 
 
 - `app/main.py`: crea la aplicación FastAPI, configura CORS y registra las rutas.
 - `app/api/routes.py`: define los endpoints HTTP. Es la capa de entrada de la API y no ejecuta procesamiento pesado.
-- `app/schemas/admin.py`: contratos Pydantic del dashboard admin.
+- `app/schemas/admin.py`: esquemas Pydantic del dashboard admin.
 - `app/cli/create_admin.py`: comando para crear o actualizar el admin inicial.
 - `app/core/config.py`: centraliza configuración por variables de entorno usando `pydantic-settings`.
 - `app/db/base.py`: define la clase base declarativa de SQLAlchemy.

@@ -2,7 +2,7 @@
 
 Repositorio para el TFM **"Diseño e implementación de un servicio de procesamiento de imágenes de resonancia magnética para la generación automática de informes clínicos en Neurorrehabilitación"**.
 
-La plataforma permite subir estudios anonimizados desde una GUI web, registrar la subida, preparar una estructura BIDS por estudio, lanzar procesamiento asíncrono mediante un procesador externo tratado como caja negra, guardar estados y descargar un PDF técnico y, cuando aplica, un ZIP de outputs.
+La plataforma permite subir estudios anonimizados desde una GUI web, registrar la subida, preparar una estructura BIDS por estudio, lanzar procesamiento asíncrono mediante un procesador externo tratado como componente aislado, guardar estados y descargar un PDF técnico y, cuando aplica, un ZIP de resultados.
 
 El PDF generado en esta versión es un **informe técnico de artefactos de procesamiento**. No interpreta imágenes, no contiene conclusiones médicas y no constituye un informe clínico validado.
 
@@ -17,7 +17,7 @@ flowchart LR
   Redis --> Worker[Celery worker]
   Worker --> Adapter[processor_adapter]
   Adapter --> CLI[Procesador externo]
-  CLI --> Outputs[Outputs del procesador]
+  CLI --> Outputs[Resultados del procesador]
   Worker --> Render[PNG con FSL slicer]
   Render --> Artifacts[PDF tecnico / ZIP]
   API --> Download[Descarga resultados]
@@ -72,7 +72,7 @@ Cuando se modifica el frontend y se usa el despliegue Docker/Nginx, ejecuta `mak
 7. El adaptador ejecuta el comando correspondiente al backend configurado.
 8. En modo `dummy`, se usa `PROCESSOR_COMMAND`; en modo `compneuro`, se usa `COMPNEURO_COMMAND`.
 9. El procesador dummy genera un PDF de desarrollo o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
-10. El worker detecta outputs, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
+10. El worker detecta resultados, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
 11. La GUI permite ver detalle/logs, cancelar jobs en cola, reintentar fallidos, borrar estudios permitidos y descargar PDF/ZIP si el usuario tiene permiso.
 
 ## Procesadores
@@ -81,7 +81,7 @@ El backend de procesamiento se selecciona con `PROCESSOR_BACKEND`.
 
 | Backend | Uso | Comando ejecutado |
 | --- | --- | --- |
-| `dummy` | Desarrollo y pruebas rápidas sin pipeline real. | `PROCESSOR_COMMAND` |
+| `dummy` | Desarrollo y pruebas rápidas sin flujo real. | `PROCESSOR_COMMAND` |
 | `compneuro` | Integración real con `compneuro-anatproc` para T1w `.nii.gz`. | `COMPNEURO_COMMAND` |
 
 `PROCESSOR_COMMAND` es una plantilla para el procesador de desarrollo. Permite cambiar el script dummy sin tocar FastAPI ni Celery:
@@ -124,14 +124,14 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 - Sin retención automática de datos.
 - Sin compartición de informes mediante enlaces firmados.
 - Sin notificaciones por email.
-- Sin subida múltiple ni batches.
+- Sin subida múltiple ni lotes.
 - Sin MinIO/S3 en esta versión.
 - El procesador dummy no tiene validez clínica.
 - La integración `compneuro-anatproc` inicial ejecuta solo `src/apreproc_launcher.sh`; `brainmeasures.sh` queda como mejora futura.
-- El PDF de la integración real es un resumen técnico de procesamiento con PNG renderizados desde outputs NIfTI; no es un informe clínico.
+- El PDF de la integración real es un resumen técnico de procesamiento con PNG renderizados desde resultados NIfTI; no es un informe clínico.
 
 ## Roadmap
 
 El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La **Fase 3 — Admin dashboard** ya añade visibilidad operativa para administradores: estado de cola, jobs activos/fallidos, uso de disco, healthchecks, usuarios y estudios por estado. La siguiente fase recomendada es **Fase 4 — Backups y mantenimiento**.
 
-Quedan para fases posteriores: Google/OIDC, ORCID, compartición mediante enlaces firmados, notificaciones, múltiples subidas, retención automática, cuotas, pipelines configurables avanzados e integración institucional.
+Quedan para fases posteriores: Google/OIDC, ORCID, compartición mediante enlaces firmados, notificaciones, múltiples subidas, retención automática, cuotas, flujos de procesamiento configurables e integración institucional.

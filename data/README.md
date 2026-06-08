@@ -6,7 +6,7 @@ Esta carpeta es el punto de montaje local para datos generados por la aplicació
 
 - Guardar estudios subidos.
 - Guardar estructura BIDS preparada por estudio.
-- Guardar outputs del procesador, PDF técnico y ZIP.
+- Guardar resultados del procesador, PDF técnico y ZIP.
 - Guardar logs técnicos del procesador.
 - Mantener metadatos locales por estudio.
 

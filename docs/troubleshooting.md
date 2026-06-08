@@ -20,7 +20,7 @@ Revisar `data/studies/{study_id}/logs/processor.log` y el valor de `PROCESSOR_CO
 
 En modo `dummy`, el script externo debe generar al menos un `.pdf` dentro del directorio `output`.
 
-En modo `compneuro`, el pipeline no genera PDF clínico. La plataforma genera `output/reports/technical_report.pdf` después de detectar outputs en `output/Preproc` y renderizar PNG en `output/rendered_png/`.
+En modo `compneuro`, el flujo no genera PDF clínico. La plataforma genera `output/reports/technical_report.pdf` después de detectar resultados en `output/Preproc` y renderizar PNG en `output/rendered_png/`.
 
 ## No Hay PNG Renderizados
 

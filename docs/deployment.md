@@ -32,7 +32,7 @@ Para ejecutar `compneuro-anatproc`, el worker se construye con `worker/Dockerfil
 
 No se arranca un contenedor `compneuro-anatproc` separado. El servicio `worker` es el contenedor que hereda esa imagen base y ejecuta directamente `src/apreproc_launcher.sh`.
 
-Si en el futuro se usa otro script o una imagen distinta, el patrón se mantiene: el servicio `worker` debe contener Celery, el código de la plataforma, las dependencias del procesador y acceso al volumen `./data:/app/data`. El nuevo comando debe configurarse por variables de entorno y respetar el contrato de outputs documentado en `docs/processing-pipeline.md`.
+Si en el futuro se usa otro script o una imagen distinta, el patrón se mantiene: el servicio `worker` debe contener Celery, el código de la plataforma, las dependencias del procesador y acceso al volumen `./data:/app/data`. El nuevo comando debe configurarse por variables de entorno y respetar la estructura de resultados esperada documentada en `docs/processing-pipeline.md`.
 
 Variables mínimas:
 

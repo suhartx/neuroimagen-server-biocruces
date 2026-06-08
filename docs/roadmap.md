@@ -6,7 +6,7 @@ Este roadmap ordena la evolución funcional de la plataforma desde el estado act
 
 La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos, descarga de resultados según permisos, gestión básica de jobs y dashboard operativo para admin.
 
-Todavía no existen compartición segura mediante enlaces, notificaciones, backups/restore automatizados, retención automática, cuotas, pipelines seleccionables desde GUI ni revisión clínica formal.
+Todavía no existen compartición segura mediante enlaces, notificaciones, backups/restore automatizados, retención automática, cuotas, flujos seleccionables desde GUI ni revisión clínica formal.
 
 ## Roadmap de evolución funcional
 
@@ -19,7 +19,7 @@ Funcionalidades disponibles:
 - Procesamiento asíncrono con Celery/Redis.
 - Worker basado en `compneuro-anatproc`.
 - Renderizado PNG desde NIfTI.
-- PDF técnico y ZIP de outputs.
+- PDF técnico y ZIP de resultados.
 - Descarga de resultados desde la GUI.
 - Auditoría básica asociada al estudio.
 
@@ -34,7 +34,7 @@ Criterios de aceptación ya cubiertos:
 
 Estado: implementada como base funcional.
 
-Objetivo: introducir identidad, propiedad de estudios y permisos mínimos sin cambiar el pipeline de procesamiento.
+Objetivo: introducir identidad, propiedad de estudios y permisos mínimos sin cambiar el flujo de procesamiento.
 
 Alcance implementado:
 
@@ -73,7 +73,7 @@ Criterios de aceptación:
 - La GUI muestra historial por usuario.
 - La documentación explica creación de usuarios, roles y permisos.
 - Tests básicos de permisos pasan.
-- Se mantiene compatibilidad técnica con el pipeline `compneuro`.
+- Se mantiene compatibilidad técnica con el flujo `compneuro`.
 
 ### Fase 2 — Gestión De Jobs Y Trazabilidad
 
@@ -102,7 +102,7 @@ Riesgos:
 
 - Exponer rutas internas sensibles en logs.
 - Romper trazabilidad si el borrado físico elimina toda evidencia operativa.
-- Reintentos no idempotentes si no se limpian outputs parciales.
+- Reintentos no idempotentes si no se limpian resultados parciales.
 
 Criterios de aceptación:
 
@@ -221,22 +221,22 @@ Criterios de aceptación:
 - Los errores de SMTP no marcan como fallido el procesamiento principal.
 - Las notificaciones quedan registradas para diagnóstico.
 
-### Fase 7 — Multiple Upload Y Batches
+### Fase 7 — Subida Múltiple Y Lotes
 
-Objetivo: permitir cargar varios estudios sin cambiar el contrato de procesamiento por fichero.
+Objetivo: permitir cargar varios estudios sin cambiar la interfaz de procesamiento esperada por fichero.
 
 Alcance recomendado:
 
 - Subida múltiple de `.nii.gz`.
 - Un job por fichero.
-- Entidad `BatchUpload` opcional.
+- Entidad `BatchUpload` opcional para agrupar el lote.
 - Tabla filename -> subject ID.
 - Resultado parcial si algunos fallan.
 - Descarga agregada opcional.
 
 Decisión recomendada:
 
-- Mantener un job por fichero. El batch agrupa trazabilidad y experiencia de usuario, no fusiona procesamiento.
+- Mantener un job por fichero. El lote agrupa trazabilidad y experiencia de usuario, no fusiona procesamiento.
 
 Riesgos:
 
@@ -248,7 +248,7 @@ Criterios de aceptación:
 
 - Cada fichero produce un estudio/job independiente.
 - El usuario puede ver éxito/fallo por fichero.
-- El batch no oculta errores individuales.
+- El lote no oculta errores individuales.
 
 ### Fase 8 — Retención, Cuotas Y Control De Almacenamiento
 
@@ -277,17 +277,17 @@ Criterios de aceptación:
 - `keep_forever` excluye estudios de retención automática.
 - Todo borrado automático genera evento de auditoría.
 
-### Fase 9 — Pipelines Configurables
+### Fase 9 — Flujos Configurables
 
-Objetivo: preparar selección de pipeline sin convertir la plataforma en un gestor dinámico complejo de herramientas.
+Objetivo: preparar la selección de flujos de procesamiento sin convertir la plataforma en un gestor dinámico complejo de herramientas.
 
 Alcance recomendado:
 
-- Selección de pipeline por subida.
+- Selección de flujo de procesamiento por subida.
 - Registro de `pipeline_name` y `pipeline_version`.
-- Habilitar/deshabilitar pipelines por configuración.
-- Mantener `compneuro` como pipeline principal.
-- Mantener `dummy` como pipeline de desarrollo.
+- Habilitar/deshabilitar flujos por configuración.
+- Mantener `compneuro` como flujo principal.
+- Mantener `dummy` como flujo de desarrollo.
 - Gestión avanzada de herramientas solo como futuro lejano.
 
 Decisión recomendada:
@@ -297,14 +297,14 @@ Decisión recomendada:
 
 Riesgos:
 
-- Acoplar API o worker a detalles internos de cada pipeline.
-- Permitir combinaciones de inputs y pipelines no validadas.
+- Acoplar API o worker a detalles internos de cada flujo.
+- Permitir combinaciones de entradas y flujos no validadas.
 
 Criterios de aceptación:
 
-- Cada estudio registra pipeline usado y versión.
+- Cada estudio registra el flujo usado y su versión.
 - La selección no rompe el flujo compneuro actual.
-- Los pipelines deshabilitados no aparecen en la GUI.
+- Los flujos deshabilitados no aparecen en la GUI.
 
 ### Fase 10 — Integración Institucional
 
@@ -340,7 +340,7 @@ Criterios de aceptación:
 
 ### Fase 11 — Revisión Clínica
 
-Objetivo: separar outputs técnicos de una eventual validación profesional.
+Objetivo: separar resultados técnicos de una eventual validación profesional.
 
 Alcance recomendado:
 
@@ -360,7 +360,7 @@ Dependencias:
 Criterios de aceptación:
 
 - Solo usuarios autorizados pueden marcar revisión o validación.
-- La revisión no modifica outputs originales.
+- La revisión no modifica resultados originales.
 - El historial de cambios queda auditado.
 
 ## Priorización Recomendada
@@ -379,9 +379,9 @@ Orden óptimo de implementación tras cerrar este roadmap:
 1. Fase 4: backups y restore local.
 2. Fase 5: sharing seguro.
 3. Fase 6: notificaciones.
-4. Fase 7: multiple upload y batches.
+4. Fase 7: subida múltiple y lotes.
 5. Fase 8: retención, cuotas y almacenamiento.
-6. Fase 9: pipelines configurables.
+6. Fase 9: flujos configurables.
 7. Fase 10: integración institucional.
 8. Fase 11: revisión clínica.
 

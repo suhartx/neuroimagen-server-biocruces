@@ -17,7 +17,7 @@ Esta carpeta contiene pruebas automatizadas básicas. No busca cubrir todo el si
 - `conftest.py`: configura fixtures de pytest, base SQLite temporal y cliente FastAPI.
 - `test_api.py`: prueba auth, permisos, estudios, jobs, dashboard, descargas y acciones.
 - `test_bids.py`: prueba preparación BIDS y sujeto seguro.
-- `test_processor_adapter.py`: prueba el contrato del adaptador con el dummy y escenarios de error.
+- `test_processor_adapter.py`: prueba la interfaz esperada del adaptador con el dummy y escenarios de error.
 - `test_worker.py`: prueba transiciones principales del worker ante éxito/error simulado.
 
 ## Ejecución

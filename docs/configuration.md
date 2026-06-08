@@ -29,13 +29,13 @@ El fichero `.env` no debe commitearse. Puede contener contraseñas, rutas locale
 | `WORKER_DOCKERFILE` | Dockerfile usado para construir el worker. | `backend/Dockerfile` |
 | `COMPNEURO_CONTAINER_IMAGE` | Imagen base documentada para trazabilidad de compneuro. | `compneurobilbaolab/compneuro-anatproc:1.1` |
 | `COMPNEURO_ANATPROC_REF` | Commit del repo externo usado al construir el worker compneuro. | `a2f3e7c9523ed521c3f85f7dffde5ee8fb400842` |
-| `COMPNEURO_PROJECT_MOUNT` | Ruta que el pipeline externo ve como proyecto. | `/project` |
+| `COMPNEURO_PROJECT_MOUNT` | Ruta que el procesador externo ve como proyecto. | `/project` |
 | `COMPNEURO_COMMAND` | Comando ejecutado por el adapter compneuro. | `bash /app/src/apreproc_launcher.sh` |
 | `PROCESSING_TIMEOUT_SECONDS` | Timeout del procesador; `0` lo desactiva. | `0` |
 | `MAX_CONCURRENT_PROCESSING_JOBS` | Concurrencia del worker. Para compneuro se recomienda `1`. | `1` |
-| `GENERATE_OUTPUT_ZIP` | Generar ZIP de outputs `Preproc`. | `true` |
+| `GENERATE_OUTPUT_ZIP` | Generar ZIP de resultados `Preproc`. | `true` |
 | `GENERATE_TECHNICAL_PDF` | Generar PDF técnico de procesamiento. | `true` |
-| `GENERATE_RENDERED_PNG` | Renderizar outputs NIfTI a PNG tras `compneuro`. | `true` |
+| `GENERATE_RENDERED_PNG` | Renderizar resultados NIfTI a PNG tras `compneuro`. | `true` |
 | `NIFTI_RENDERER` | Herramienta CLI de renderizado. En compneuro debe ser FSL `slicer`. | `slicer` |
 | `NIFTI_RENDER_MAX_FILES` | Máximo de NIfTI a renderizar por estudio. | `50` |
 | `NIFTI_RENDER_TIMEOUT_SECONDS` | Timeout por fichero renderizado. | `300` |
@@ -105,7 +105,7 @@ Para sustituir el procesador de forma más amplia, revisar:
 - `COMPNEURO_COMMAND` o el comando equivalente del nuevo backend.
 - `WORKER_DOCKERFILE`: Dockerfile que construye el worker con las herramientas necesarias.
 - `COMPNEURO_CONTAINER_IMAGE`/imagen base documentada, si se mantiene este backend.
-- contrato de outputs esperado por `worker/tasks.py` y `processor_adapter/output_packager.py`.
+- estructura de resultados esperada por `worker/tasks.py` y `processor_adapter/output_packager.py`.
 
 La API prepara automáticamente BIDS para un único sujeto T1w. Si el sujeto se deja vacío, genera un identificador seguro. Si se informa un valor inválido, responde `400`.
 
@@ -113,16 +113,16 @@ La carpeta local `compneuro-anatproc/` no es necesaria para ejecutar la integrac
 
 ## Cómo Sustituir El Procesador
 
-Para cambiar la imagen Docker o usar otro script, mantené la separación entre plataforma y procesador externo:
+Para cambiar la imagen Docker o usar otro script, mantén la separación entre plataforma y procesador externo:
 
 1. Crear o adaptar un Dockerfile de worker con Celery, las dependencias Python de la plataforma y las herramientas del nuevo procesador.
 2. Configurar `WORKER_DOCKERFILE` para construir ese worker.
-3. Configurar `COMPNEURO_COMMAND` si alcanza con cambiar el script dentro del backend `compneuro`, o crear un backend nuevo en `processor_adapter` si cambia el contrato.
+3. Configurar `COMPNEURO_COMMAND` si basta con cambiar el script dentro del backend `compneuro`, o crear un backend nuevo en `processor_adapter` si cambia la interfaz esperada.
 4. Asegurar que el comando nuevo lea los datos preparados por la plataforma y escriba resultados en la salida esperada, idealmente `output/Preproc`.
 5. Dejar que el worker genere los artefactos propios de la plataforma: `output/reports/technical_report.pdf` y `output/outputs.zip`.
 6. Reconstruir y reiniciar `worker`; reiniciar `api` si cambia configuración compartida.
 
-No hace falta modificar la GUI ni los endpoints de FastAPI si el nuevo procesador respeta el contrato descrito en `docs/processing-pipeline.md`.
+No hace falta modificar la GUI ni los endpoints de FastAPI si el nuevo procesador respeta la interfaz esperada descrita en `docs/processing-pipeline.md`.
 
 ## Seguridad Operativa
 
