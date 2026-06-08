@@ -4,9 +4,9 @@ Este roadmap ordena la evolución funcional de la plataforma desde el estado act
 
 ## Estado Del Proyecto
 
-La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos, descarga de resultados según permisos, gestión básica de jobs y dashboard operativo para admin.
+La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos, descarga de resultados según permisos, gestión básica de jobs, dashboard operativo para admin y backup/restore local por CLI.
 
-Todavía no existen compartición segura mediante enlaces, notificaciones, backups/restore automatizados, retención automática, cuotas, flujos seleccionables desde GUI ni revisión clínica formal.
+Todavía no existen compartición segura mediante enlaces, notificaciones, retención automática, cuotas, flujos seleccionables desde GUI ni revisión clínica formal.
 
 ## Roadmap de evolución funcional
 
@@ -144,7 +144,9 @@ Criterios de aceptación:
 
 Objetivo: documentar y automatizar una recuperación local razonable para TFM sin infraestructura externa compleja.
 
-Alcance recomendado:
+Estado: implementada como operación CLI mediante `make backup` y `make restore`, sin endpoints ni GUI.
+
+Alcance implementado:
 
 - Script local de backup PostgreSQL.
 - Script local de backup de `data/studies`.
@@ -154,10 +156,10 @@ Alcance recomendado:
 - Documentación de operación.
 - Política manual de mantenimiento.
 
-Dependencias:
+Decisiones cubiertas:
 
-- Definir qué se considera unidad restaurable: base de datos + `data/studies`.
-- Documentar dónde se guardan backups y cómo se protegen fuera de Git.
+- La unidad restaurable es base de datos + `data/studies`.
+- Los backups se guardan por defecto en `backups/`, fuera de Git, y deben copiarse fuera del servidor para protección real ante pérdida de disco.
 
 Criterios de aceptación:
 
@@ -365,33 +367,33 @@ Criterios de aceptación:
 
 ## Priorización Recomendada
 
-La próxima fase óptima es **Fase 4 — Backups Y Mantenimiento**.
+La próxima fase óptima es **Fase 5 — Compartición Segura De Informes**.
 
 Justificación:
 
 - La Fase 1 ya establece identidad, roles, propietario por estudio e historial básico.
 - La Fase 2 ya añade detalle de job, logs truncados, cancelación de jobs en cola, retry y borrado seguro.
 - La Fase 3 ya aporta visibilidad operativa global para admin.
-- Conviene asegurar backup y restore local antes que sharing, notificaciones o integración institucional.
+- Backup y restore local ya están cubiertos como operación CLI antes de avanzar a sharing, notificaciones o integración institucional.
 
 Orden óptimo de implementación tras cerrar este roadmap:
 
-1. Fase 4: backups y restore local.
-2. Fase 5: sharing seguro.
-3. Fase 6: notificaciones.
-4. Fase 7: subida múltiple y lotes.
-5. Fase 8: retención, cuotas y almacenamiento.
-6. Fase 9: flujos configurables.
-7. Fase 10: integración institucional.
-8. Fase 11: revisión clínica.
+1. Fase 5: sharing seguro.
+2. Fase 6: notificaciones.
+3. Fase 7: subida múltiple y lotes.
+4. Fase 8: retención, cuotas y almacenamiento.
+5. Fase 9: flujos configurables.
+6. Fase 10: integración institucional.
+7. Fase 11: revisión clínica.
 
 ## Histórico Implementado
 
-Las fases 1, 2 y 3 ya están implementadas como base funcional:
+Las fases 1, 2, 3 y 4 ya están implementadas como base funcional y operativa:
 
 - Fase 1: login local, roles `admin`/`researcher`, propietario por estudio, creación de usuarios por admin y permisos por endpoint.
 - Fase 2: detalle de jobs, logs truncados, cancelación de jobs en cola, retry de fallidos, soft delete, borrado físico controlado y auditoría mínima.
 - Fase 3: dashboard admin con cola, jobs activos/fallidos, uso de disco, healthchecks, usuarios, estudios por estado y alertas no bloqueantes.
+- Fase 4: backup/restore local por CLI de PostgreSQL y `data/studies`, con confirmación fuerte para restore y smoke test posterior.
 
 Los detalles técnicos vivos están en `docs/architecture.md`, `docs/api.md`, `docs/developer-manual.md` y los tests.
 
@@ -415,4 +417,4 @@ Los detalles técnicos vivos están en `docs/architecture.md`, `docs/api.md`, `d
 - Evaluar si conviene migrar de JWT en localStorage a cookie `HttpOnly` antes de exposición real.
 - Definir si `AuditEvent.actor` textual se conserva como compatibilidad o se elimina en una migración futura.
 - Decidir si el usuario `system` debe ocultarse del dashboard admin.
-- Definir política de backups, restore y retención antes de usar datos sensibles.
+- Definir política de retención antes de usar datos sensibles.

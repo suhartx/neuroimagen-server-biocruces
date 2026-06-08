@@ -145,7 +145,7 @@ Evolución posterior:
 
 - Un rol `viewer` completo no entra en la implementación actual. La compartición futura debe resolverse con enlaces firmados, caducidad, revocación y auditoría.
 - Google/OIDC y ORCID deben vincularse a usuarios internos existentes o aprovisionados, sin sustituir el modelo de permisos propio.
-- Backups, restore local y mantenimiento operativo quedan para una fase posterior.
+- Backups y restore local ya se cubren como operación CLI; retención automática queda para una fase posterior.
 
 ## Estados
 

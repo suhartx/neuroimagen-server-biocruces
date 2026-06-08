@@ -32,7 +32,7 @@ La lista se configura mediante `ALLOWED_EXTENSIONS` y debe mantenerse alineada c
 
 ## Roadmap De Seguridad
 
-La identidad local, permisos básicos, trazabilidad de jobs y dashboard admin ya están implementados como base de TFM. Las siguientes mejoras de seguridad deben centrarse en operación y exposición real: backups/restore verificables, retención, TLS, hardening de host/contenedores y una política de sesión más robusta si el sistema se comparte fuera de un entorno controlado.
+La identidad local, permisos básicos, trazabilidad de jobs, dashboard admin y backup/restore local por CLI ya están implementados como base de TFM. Las siguientes mejoras de seguridad deben centrarse en exposición real y ciclo de vida de datos: retención, TLS, hardening de host/contenedores y una política de sesión más robusta si el sistema se comparte fuera de un entorno controlado.
 
 ### Autenticación Local Y Roles
 

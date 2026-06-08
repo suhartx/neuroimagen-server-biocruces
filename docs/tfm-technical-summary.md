@@ -10,6 +10,6 @@ La decisión clave es mantener una API ligera y un worker especializado: FastAPI
 
 ## Evolución Planificada
 
-El roadmap plantea una evolución incremental: primero identidad y permisos, después trazabilidad operativa, dashboard admin, backups/restore, compartición segura, notificaciones, lotes, retención, flujos configurables, integración institucional y revisión clínica.
+El roadmap plantea una evolución incremental: primero identidad y permisos, después trazabilidad operativa, dashboard admin, backups/restore local, compartición segura, notificaciones, lotes, retención, flujos configurables, integración institucional y revisión clínica.
 
 La plataforma incorpora una primera capa multiusuario con login local, roles `admin`/`researcher`, propietario por estudio y protección de endpoints. Esto desbloquea historial por usuario, control de acceso, auditoría real y administración sin modificar la frontera con el procesador externo. Integraciones como Google/OIDC, ORCID, enlaces compartidos, email, cuotas o revisión clínica quedan justificadas como fases posteriores porque dependen de identidad, permisos y trazabilidad previas.

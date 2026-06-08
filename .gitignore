@@ -9,6 +9,8 @@ dist/
 coverage/
 data/studies/*
 !data/studies/.gitkeep
+data/pre-restore/
+backups/
 compneuro-anatproc/
 *.log
 .DS_Store
