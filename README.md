@@ -54,6 +54,8 @@ make lint     # ruff check
 make format   # ruff format
 make migrate  # aplicar migraciones en el contenedor api
 make create-admin EMAIL=admin@example.org # crear/actualizar admin inicial
+make backup   # crear backup local de PostgreSQL y data/studies
+make restore BACKUP_DIR=backups/<timestamp> CONFIRM_RESTORE=YES_I_UNDERSTAND # restaurar backup local
 make seed     # crear fichero de prueba local
 make smoke    # comprobar healthcheck vía proxy
 make clean    # borrar volúmenes y estudios locales
@@ -132,6 +134,6 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 
 ## Roadmap
 
-El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La **Fase 3 — Admin dashboard** ya añade visibilidad operativa para administradores: estado de cola, jobs activos/fallidos, uso de disco, healthchecks, usuarios y estudios por estado. La siguiente fase recomendada es **Fase 4 — Backups y mantenimiento**.
+El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La **Fase 4 — Backups y mantenimiento** ya añade backup/restore local mediante CLI para PostgreSQL y `data/studies`, con verificación posterior mediante `make smoke`. La siguiente fase recomendada es **Fase 5 — Compartición segura de informes**.
 
 Quedan para fases posteriores: Google/OIDC, ORCID, compartición mediante enlaces firmados, notificaciones, múltiples subidas, retención automática, cuotas, flujos de procesamiento configurables e integración institucional.

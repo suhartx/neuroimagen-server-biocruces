@@ -7,6 +7,8 @@
 - `make logs`: inspeccionar logs.
 - `make smoke`: comprobar healthcheck.
 - `make create-admin EMAIL=admin@example.org`: crear o actualizar el admin inicial.
+- `make backup`: crear backup local de PostgreSQL y `data/studies`.
+- `make restore BACKUP_DIR=backups/<timestamp> CONFIRM_RESTORE=YES_I_UNDERSTAND`: restaurar backup local.
 - `make frontend-rebuild`: reconstruir y recrear solo el frontend Docker.
 - `make rebuild`: reconstruir y recrear todos los servicios Docker.
 - `make clean`: limpiar volúmenes y estudios locales.
@@ -28,16 +30,27 @@ El comando pide contraseña por consola. No hay registro público abierto; los d
 - Respaldar PostgreSQL y `data/`; ambos son necesarios para reconstruir trazabilidad.
 - Hasta definir retención, los estudios y resultados se conservan indefinidamente.
 
-Roadmap operativo recomendado para Fase 4:
+La Fase 4 implementa backup/restore local por CLI, sin endpoints ni pantalla admin:
 
-- Script local de backup de PostgreSQL.
-- Script local de backup de `data/studies`.
-- Script de restore documentado.
-- Smoke test tras restore.
-- Comandos Makefile para backup, restore y verificación.
-- Documentar ubicación de backups fuera de Git.
+- `make backup` crea `backups/<timestamp>/db.sql`, `studies.tar.gz` y `manifest.txt`.
+- El backup se escribe primero en un directorio temporal `backups/.tmp-*` y solo se publica como `backups/<timestamp>` si termina correctamente.
+- `db.sql` se genera con `pg_dump` dentro del contenedor `postgres`.
+- `studies.tar.gz` archiva `data/studies` desde un contenedor auxiliar basado en `api`, para poder leer resultados creados como `root` por el procesador.
+- Durante el backup se pausan `api` y `worker` para evitar escrituras concurrentes.
+- El backup se cancela si existen jobs `queued` o `processing`; primero hay que esperar, cancelar o resolver esos trabajos.
+- El archivado de `data/studies` usa la lista de estudios registrada en PostgreSQL para evitar respaldar carpetas huérfanas de uploads interrumpidos.
+- El backup también se cancela si falta la carpeta local de un estudio activo; solo tolera carpetas ausentes de estudios ya borrados.
+- Los ficheros de backup se crean con permisos privados mediante `umask 077`.
+- `backups/` queda ignorado por Git; debe copiarse fuera del servidor si se necesita protección real ante pérdida de disco.
+- `make restore BACKUP_DIR=backups/<timestamp> CONFIRM_RESTORE=YES_I_UNDERSTAND` detiene `api` y `worker`, restaura PostgreSQL y `data/studies`, vuelve a levantar `api` y `worker`, espera a que `api` responda internamente y reinicia `reverse-proxy` para refrescar el upstream `api`.
+- El restore limpia Redis con `FLUSHALL` porque la cola Celery no forma parte de la unidad restaurable.
+- La restauración de PostgreSQL se ejecuta dentro de una transacción para evitar dejar la base parcialmente reemplazada si falla el SQL.
+- Antes de reemplazar `data/studies`, el restore mueve la carpeta previa a `data/pre-restore/studies-<timestamp>`.
+- Tras un restore, el script espera brevemente al proxy y ejecuta `scripts/smoke.sh` con reintentos cortos para confirmar que la API responde vía proxy.
 
 El backup útil debe tratar base de datos y filesystem como una unidad lógica. Restaurar solo PostgreSQL o solo `data/studies` puede dejar estudios sin ficheros, ficheros sin metadatos o auditoría incompleta.
+
+Redis no se respalda en esta fase: la cola Celery se considera estado transitorio. Antes de restaurar, revisar que no haya procesamientos críticos en curso.
 
 ## Dashboard Admin
 

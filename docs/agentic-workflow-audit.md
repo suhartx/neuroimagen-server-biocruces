@@ -81,6 +81,12 @@ Fecha: 2026-04-29
 - `secret-protection.js`: bloquea lecturas de `.env`, credenciales, secretos y claves/certificados comunes.
 - `opencode.json`: mantiene `git push*` en modo `ask`; no se permite push implícito ni force push sin autorización expresa.
 
+## Actualización 2026-06-08
+
+- Se añadieron permisos acotados en `opencode.json` para `git add *`, `git commit *` y `git push origin develop`.
+- Motivo: permitir que OpenCode complete commits y subidas a `develop` cuando el usuario lo autoriza explícitamente, manteniendo otros `git push*` en modo `ask`.
+- No se habilita force push ni comandos destructivos.
+
 ## No Creado
 
 - No se crearon agentes por backend/frontend/devops/qa/security porque las responsabilidades ya están cubiertas por `AGENTS.md`, skills bajo demanda y comandos existentes del proyecto.

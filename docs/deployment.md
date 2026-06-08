@@ -54,5 +54,5 @@ MAX_CONCURRENT_PROCESSING_JOBS=1
 - Revisar todas las variables descritas en `docs/configuration.md`.
 - Restringir acceso de red al servidor.
 - Añadir TLS en Nginx o Caddy.
-- Configurar backups de PostgreSQL y `data/`.
+- Ejecutar `make backup` para respaldar PostgreSQL y `data/studies`, y copiar `backups/` fuera del servidor si se necesita recuperación ante pérdida de disco.
 - Revisar política de retención antes de usar datos sensibles.

@@ -15,12 +15,14 @@ Esta carpeta contiene scripts pequeños de operación y validación.
 - `smoke.sh`: comprueba el healthcheck vía reverse proxy.
 - `check-docs.sh`: valida que exista la documentación mínima obligatoria.
 - `check-no-secrets.sh`: busca señales simples de secretos o `.env` commiteados.
+- `backup.sh`: crea un backup local de PostgreSQL y `data/studies`; pausa `api`/`worker`, rechaza jobs activos y archiva solo estudios registrados en DB.
+- `restore.sh`: restaura PostgreSQL y `data/studies` desde un backup local con confirmación explícita, limpiando Redis como estado transitorio.
 - `seed.sh`: crea un fichero dummy local para pruebas manuales.
 
 ## Relación Con Makefile
 
-El `Makefile` llama a estos scripts mediante comandos como `make smoke`, `make check-docs`, `make check-secrets` y `make seed`.
+El `Makefile` llama a estos scripts mediante comandos como `make smoke`, `make backup`, `make restore`, `make check-docs`, `make check-secrets` y `make seed`.
 
 ## Criterio
 
-Los scripts deben seguir siendo simples, legibles y seguros. No deben borrar datos reales salvo que el comando lo indique claramente.
+Los scripts deben seguir siendo simples, legibles y seguros. No deben borrar datos reales salvo que el comando lo indique claramente. El restore debe conservar una copia previa local antes de reemplazar `data/studies`.

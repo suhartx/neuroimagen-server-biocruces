@@ -74,7 +74,7 @@ Crear el primer admin:
 make create-admin EMAIL=admin@example.org
 ```
 
-La gestión básica de jobs incluye logs truncados, cancelación de jobs en cola, retry de fallidos y borrado seguro. El dashboard admin ya muestra estado global de cola, jobs, almacenamiento, servicios, usuarios y estudios por estado. La siguiente fase recomendada es backups y restore local.
+La gestión básica de jobs incluye logs truncados, cancelación de jobs en cola, retry de fallidos y borrado seguro. El dashboard admin ya muestra estado global de cola, jobs, almacenamiento, servicios, usuarios y estudios por estado. Backup y restore local ya están disponibles por CLI. La siguiente fase recomendada es compartición segura de informes.
 
 Permisos mínimos esperados:
 

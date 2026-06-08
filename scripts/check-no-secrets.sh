@@ -8,7 +8,26 @@ if git diff --cached --name-only | grep -E '(^|/)\.env$' >/dev/null; then
   echo "Do not commit .env files"
   exit 1
 fi
-if grep -R "BEGIN RSA PRIVATE KEY\|AWS_SECRET_ACCESS_KEY\|password *= *['\"][^'\"]" --exclude-dir=.git --exclude-dir=node_modules --exclude=.env --exclude=check-no-secrets.sh .; then
+if git ls-files | grep -E '^(backups/|data/pre-restore/|data/studies/.+)' | grep -v '^data/studies/\.gitkeep$' >/dev/null; then
+  echo "Do not track backups or study data"
+  exit 1
+fi
+if git diff --cached --name-only | grep -E '^(backups/|data/pre-restore/|data/studies/.+)' | grep -v '^data/studies/\.gitkeep$' >/dev/null; then
+  echo "Do not commit backups or study data"
+  exit 1
+fi
+if grep -r "BEGIN RSA PRIVATE KEY\|AWS_SECRET_ACCESS_KEY\|password *= *['\"][^'\"]" \
+  --exclude-dir=.git \
+  --exclude-dir=node_modules \
+  --exclude-dir=.venv \
+  --exclude-dir=dist \
+  --exclude-dir=coverage \
+  --exclude-dir=studies \
+  --exclude-dir=pre-restore \
+  --exclude-dir=backups \
+  --exclude=.env \
+  --exclude=check-no-secrets.sh \
+  .; then
   echo "Potential secret found"
   exit 1
 fi
