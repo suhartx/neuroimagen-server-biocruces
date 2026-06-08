@@ -24,7 +24,7 @@ El comando pide contraseña por consola. No hay registro público abierto; los d
 ## Datos Y Backups
 
 - PostgreSQL guarda metadatos, estados y auditoría.
-- `data/studies/{study_id}` guarda input, BIDS, outputs, logs y metadata.
+- `data/studies/{study_id}` guarda entrada, BIDS, resultados, logs y metadatos.
 - Respaldar PostgreSQL y `data/`; ambos son necesarios para reconstruir trazabilidad.
 - Hasta definir retención, los estudios y resultados se conservan indefinidamente.
 
@@ -74,7 +74,7 @@ El borrado recomendado combina soft delete en base de datos con borrado físico 
 - Logs técnicos del procesador: `data/studies/{study_id}/logs/processor.log`.
 - PNG renderizados: `data/studies/{study_id}/output/rendered_png/`.
 - PDF técnico: `data/studies/{study_id}/output/reports/technical_report.pdf`.
-- ZIP de outputs: `data/studies/{study_id}/output/outputs.zip`.
+- ZIP de resultados: `data/studies/{study_id}/output/outputs.zip`.
 - Outputs compneuro: `data/studies/{study_id}/output/Preproc`.
 - Log de renderizado: `data/studies/{study_id}/logs/rendering.log`.
 
@@ -86,7 +86,7 @@ Primero revisar estado en GUI, luego logs del worker, luego `processor.log`. Par
 
 El retry de estudios fallidos está expuesto en la GUI y crea un nuevo `ProcessingJob`, conservando trazabilidad del intento anterior.
 
-Si se reejecuta manualmente fuera de la GUI, conservar outputs previos en una carpeta versionada o con timestamp antes de volver a lanzar la tarea.
+Si se reejecuta manualmente fuera de la GUI, conservar resultados previos en una carpeta versionada o con marca temporal antes de volver a lanzar la tarea.
 
 ## Operación Futura De Jobs
 

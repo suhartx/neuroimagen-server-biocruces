@@ -7,7 +7,7 @@ Esta carpeta contiene el proceso asíncrono Celery. Su trabajo es ejecutar proce
 - Consumir tareas desde Redis.
 - Cambiar estados de `Study` y `ProcessingJob`.
 - Invocar `processor_adapter`.
-- Renderizar outputs NIfTI a PNG con FSL `slicer` cuando el backend es `compneuro`.
+- Renderizar resultados NIfTI a PNG con FSL `slicer` cuando el backend es `compneuro`.
 - Guardar ruta de PDF, ZIP, PNG y logs técnicos.
 - Marcar fallos de forma controlada.
 

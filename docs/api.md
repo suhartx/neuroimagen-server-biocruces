@@ -22,7 +22,7 @@ Swagger está disponible en `/api/docs`.
 - `DELETE /api/studies/{study_id}`: soft delete en DB y borrado físico de ficheros si el estudio no está procesando.
 - `GET /api/studies/{study_id}/download`: descargar PDF técnico si está completado. Alias compatible.
 - `GET /api/studies/{study_id}/download/pdf`: descargar PDF técnico si el usuario tiene permiso.
-- `GET /api/studies/{study_id}/download/zip`: descargar ZIP de outputs si existe y el usuario tiene permiso.
+- `GET /api/studies/{study_id}/download/zip`: descargar ZIP de resultados si existe y el usuario tiene permiso.
 
 Salvo `GET /api/health` y `POST /api/auth/login`, los endpoints funcionales requieren `Authorization: Bearer <token>`.
 
