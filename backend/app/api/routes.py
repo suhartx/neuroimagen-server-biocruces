@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
 from app.models.processing_job import ProcessingJob
+from app.models.notification import Notification
 from app.models.share_link import ShareLink
 from app.models.study import Study, StudyStatus
 from app.models.user import User, UserRole
@@ -40,10 +41,12 @@ from app.schemas.admin import (
 from app.schemas.auth import (
     LoginRequest,
     LogoutResponse,
+    NotificationPreferences,
     TokenResponse,
     UserCreate,
     UserRead,
 )
+from app.schemas.notification import NotificationRead
 from app.schemas.study import (
     ProcessingJobRead,
     ShareLinkCreate,
@@ -192,6 +195,68 @@ def current_user(current_user: User = Depends(get_current_user)) -> UserRead:
     return UserRead.model_validate(current_user)
 
 
+@router.get("/me/notification-preferences", response_model=NotificationPreferences)
+def get_notification_preferences(
+    current_user: User = Depends(get_current_user),
+) -> NotificationPreferences:
+    return NotificationPreferences(
+        notify_on_processing_completed=current_user.notify_on_processing_completed,
+        notify_on_processing_failed=current_user.notify_on_processing_failed,
+    )
+
+
+@router.patch("/me/notification-preferences", response_model=NotificationPreferences)
+def update_notification_preferences(
+    payload: NotificationPreferences,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> NotificationPreferences:
+    current_user.notify_on_processing_completed = payload.notify_on_processing_completed
+    current_user.notify_on_processing_failed = payload.notify_on_processing_failed
+    record_event(
+        db,
+        "notification_preferences_updated",
+        actor=current_user.email,
+        actor_user_id=current_user.id,
+        details=payload.model_dump(),
+    )
+    db.commit()
+    return payload
+
+
+@router.get("/notifications", response_model=list[NotificationRead])
+def list_notifications(
+    limit: int = Query(default=30, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[NotificationRead]:
+    notifications = db.scalars(
+        select(Notification)
+        .where(Notification.recipient_user_id == current_user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(limit)
+    ).all()
+    return [NotificationRead.model_validate(item) for item in notifications]
+
+
+@router.post("/notifications/{notification_id}/read", response_model=NotificationRead)
+def mark_notification_read(
+    notification_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> NotificationRead:
+    notification = db.get(Notification, notification_id)
+    if not notification or notification.recipient_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notificación no encontrada"
+        )
+    if not notification.read_at:
+        notification.read_at = datetime.utcnow()
+        db.commit()
+        db.refresh(notification)
+    return NotificationRead.model_validate(notification)
+
+
 @router.get("/users", response_model=list[UserRead])
 def list_users(
     _: User = Depends(require_admin), db: Session = Depends(get_db)
@@ -231,7 +296,7 @@ def create_user(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Ya existe un usuario con ese email",
+            detail="Ya existe un usuario con ese correo electrónico",
         ) from None
     db.refresh(user)
     return UserRead.model_validate(user)
@@ -577,7 +642,7 @@ def create_share_link(
         )
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail="No se pudo crear el link de compartición",
+        detail="No se pudo crear el enlace de compartición",
     )
 
 
@@ -611,7 +676,7 @@ def revoke_share_link(
     link = db.get(ShareLink, link_id)
     if not link or link.study_id != study.id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Link no encontrado"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Enlace no encontrado"
         )
     if not link.revoked_at:
         link.revoked_at = datetime.utcnow()

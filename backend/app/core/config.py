@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     auth_secret_key: str = "change-me-in-production"
     auth_access_token_expire_minutes: int = 480
     share_link_expire_hours: int = 72
+    app_public_base_url: str = "http://localhost"
+    notifications_email_enabled: bool = False
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_use_tls: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"

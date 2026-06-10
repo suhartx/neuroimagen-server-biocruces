@@ -2,7 +2,7 @@
 
 Repositorio para el TFM **"Diseño e implementación de un servicio de procesamiento de imágenes de resonancia magnética para la generación automática de informes clínicos en Neurorrehabilitación"**.
 
-La plataforma permite subir estudios anonimizados desde una GUI web, registrar la subida, preparar una estructura BIDS por estudio, lanzar procesamiento asíncrono mediante un procesador externo tratado como componente aislado, guardar estados y descargar un PDF técnico y, cuando aplica, un ZIP de resultados.
+La plataforma permite subir estudios anonimizados desde una GUI web, registrar la subida, preparar una estructura BIDS por estudio, lanzar procesamiento asíncrono mediante un procesador externo tratado como componente aislado, guardar estados, recibir notificaciones internas/correo electrónico y descargar un PDF técnico y, cuando aplica, un ZIP de resultados.
 
 El PDF generado en esta versión es un **informe técnico de artefactos de procesamiento**. No interpreta imágenes, no contiene conclusiones médicas y no constituye un informe clínico validado.
 
@@ -20,6 +20,7 @@ flowchart LR
   CLI --> Outputs[Resultados del procesador]
   Worker --> Render[PNG con FSL slicer]
   Render --> Artifacts[PDF tecnico / ZIP]
+  Worker --> Notify[Notificaciones internas / SMTP]
   API --> Download[Descarga resultados]
   Proxy[Nginx] --> GUI
   Proxy --> API
@@ -75,7 +76,27 @@ Cuando se modifica el frontend y se usa el despliegue Docker/Nginx, ejecuta `mak
 8. En modo `dummy`, se usa `PROCESSOR_COMMAND`; en modo `compneuro`, se usa `COMPNEURO_COMMAND`.
 9. El procesador dummy genera un PDF de desarrollo o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
 10. El worker detecta resultados, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
-11. La GUI permite ver detalle/logs, cancelar jobs en cola, reintentar fallidos, borrar estudios permitidos y descargar PDF/ZIP si el usuario tiene permiso.
+11. El worker registra notificaciones internas y, si SMTP está configurado, envía correos electrónicos sin adjuntos al completar o fallar.
+12. La GUI permite ver detalle/logs, cancelar jobs en cola, reintentar fallidos, borrar estudios permitidos y descargar PDF/ZIP si el usuario tiene permiso.
+
+## Notificaciones
+
+La plataforma registra notificaciones internas cuando un procesamiento termina correctamente o falla. Por defecto Docker Compose levanta Mailpit como SMTP local y los correos quedan visibles en `http://localhost:8025`; no salen a Internet. En producción se deben reemplazar las variables SMTP por un servidor real. Los correos electrónicos solo incluyen texto y enlace a la plataforma, nunca PDF, ZIP ni datos pesados.
+
+Variables principales:
+
+```env
+APP_PUBLIC_BASE_URL=http://100.114.173.115
+NOTIFICATIONS_EMAIL_ENABLED=true
+SMTP_HOST=mailpit
+SMTP_PORT=1025
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=noreply@neuroimagen.com
+SMTP_USE_TLS=false
+```
+
+Cada usuario puede activar o desactivar correos electrónicos para estudios completados y fallidos desde la GUI. Las notificaciones internas se conservan para diagnóstico aunque el correo esté desactivado o falle.
 
 ## Procesadores
 
@@ -124,7 +145,6 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 - Sin anonimización DICOM integrada.
 - Sin revisión clínica formal.
 - Sin retención automática de datos.
-- Sin notificaciones por email.
 - Sin subida múltiple ni lotes.
 - Sin MinIO/S3 en esta versión.
 - El procesador dummy no tiene validez clínica.
@@ -133,6 +153,6 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 
 ## Roadmap
 
-El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La **Fase 5 — Compartición segura de informes** ya añade links temporales y revocables para descargar PDFs técnicos sin cuenta completa.
+El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La **Fase 6 — Notificaciones** ya añade avisos internos y SMTP configurable sin adjuntos pesados.
 
-Quedan para fases posteriores: Google/OIDC, ORCID, notificaciones, múltiples subidas, retención automática, cuotas, flujos de procesamiento configurables e integración institucional.
+Quedan para fases posteriores: Google/OIDC, ORCID, múltiples subidas, retención automática, cuotas, flujos de procesamiento configurables e integración institucional.

@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.models import AuditEvent, ProcessingJob, Study, User  # noqa: F401
+from app.models import AuditEvent, Notification, ProcessingJob, Study, User  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)

@@ -294,6 +294,48 @@ code {
   color: #7a5200;
 }
 
+.notifications-card {
+  border: 1px solid #d8e7ee;
+}
+
+.notification-preferences {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 14px 0;
+}
+
+.notification-preferences label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475467;
+  font-weight: 700;
+}
+
+.notification-list {
+  display: grid;
+  gap: 12px;
+}
+
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #e6eef2;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.notification-item.unread {
+  border-color: #8ecae0;
+  background: #f0f9ff;
+}
+
+.notification-item p {
+  margin: 6px 0;
+}
+
 .log-block pre {
   max-height: 360px;
   overflow: auto;
@@ -334,5 +376,6 @@ th, td {
   .hero, .card { padding: 22px; border-radius: 18px; }
   .section-title { align-items: flex-start; flex-direction: column; }
   .topbar { align-items: flex-start; flex-direction: column; }
+  .notification-item { flex-direction: column; }
   .metric-grid, .dashboard-columns { grid-template-columns: 1fr; }
 }

@@ -20,7 +20,7 @@
 - Logs visibles en GUI con truncado.
 - Cancelación de jobs en cola, retry de fallidos y borrado controlado con auditoría mínima.
 - Dashboard admin protegido por rol.
-- Links temporales revocables para compartir solo PDFs técnicos, con token opaco hasheado y auditoría de descarga.
+- Enlaces temporales revocables para compartir solo PDF técnicos, con token opaco hasheado y auditoría de descarga.
 
 Extensiones aceptadas por defecto: `.nii`, `.nii.gz`, `.dcm`, `.zip`, `.tar`, `.tar.gz`, `.gz`, `.json` y `.txt`.
 
@@ -33,7 +33,7 @@ La lista se configura mediante `ALLOWED_EXTENSIONS` y debe mantenerse alineada c
 
 ## Roadmap De Seguridad
 
-La identidad local, permisos básicos, trazabilidad de jobs, dashboard admin, backup/restore local por CLI y compartición temporal de PDFs ya están implementados como base de TFM. Las siguientes mejoras de seguridad deben centrarse en exposición real y ciclo de vida de datos: retención, TLS, hardening de host/contenedores y una política de sesión más robusta si el sistema se comparte fuera de un entorno controlado.
+La identidad local, permisos básicos, trazabilidad de trabajos, dashboard admin, backup/restore local por CLI y compartición temporal de PDF ya están implementados como base de TFM. Las siguientes mejoras de seguridad deben centrarse en exposición real y ciclo de vida de datos: retención, TLS, hardening de host/contenedores y una política de sesión más robusta si el sistema se comparte fuera de un entorno controlado.
 
 ### Autenticación Local Y Roles
 
@@ -50,7 +50,7 @@ Controles mínimos:
 
 - No guardar passwords en texto plano.
 - Usar hashing robusto.
-- No devolver errores de login diferenciando si existe el email.
+- No devolver errores de login diferenciando si existe el correo electrónico.
 - Usar JWT con expiración.
 - Cambiar `AUTH_SECRET_KEY` fuera de desarrollo.
 - La API no arranca fuera de `development` si `AUTH_SECRET_KEY` conserva el valor por defecto o es demasiado corta.
@@ -66,14 +66,14 @@ Permisos esperados:
 - Google/OIDC queda como mejora futura para usuarios institucionales y debe poder convivir con login local.
 - ORCID queda como mejora futura si el uso investigador gana peso.
 - La restricción por dominio institucional debe configurarse por entorno, no hardcodearse.
-- El rol `viewer` completo queda fuera de la implementación actual; la compartición implementada usa links temporales revocables para PDFs técnicos.
+- El rol `viewer` completo queda fuera de la implementación actual; la compartición implementada usa enlaces temporales revocables para PDF técnicos.
 - 2FA queda fuera por ahora.
 
 ### Datos Y Descargas
 
-- Los links compartidos usan tokens opacos aleatorios, caducidad configurable y revocación.
+- Los enlaces compartidos usan tokens opacos aleatorios, caducidad configurable y revocación.
 - Las descargas mediante token registran auditoría y no exponen ZIP ni logs.
-- Los emails futuros deben enviar enlaces, no adjuntos pesados.
+- Los correos electrónicos deben enviar enlaces, no adjuntos pesados.
 - Los logs visibles en GUI deben truncarse y evitar rutas internas sensibles.
 - El borrado de estudios aplica soft delete y borrado físico, conservando auditoría mínima.
 

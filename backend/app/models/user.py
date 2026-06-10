@@ -38,10 +38,17 @@ class User(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime)
+    notify_on_processing_completed: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    notify_on_processing_failed: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
 
     studies = relationship("Study", back_populates="owner")
     audit_events = relationship("AuditEvent", back_populates="actor_user")
     share_links = relationship("ShareLink", back_populates="created_by")
+    notifications = relationship("Notification", back_populates="recipient")
 
     @property
     def is_admin(self) -> bool:

@@ -41,8 +41,8 @@ def write_technical_pdf_report(
             _text_page(
                 [
                     "Aviso de renderizado",
-                    "No se generaron imagenes PNG a partir de los outputs NIfTI.",
-                    "El PDF se emite igualmente para dejar trazabilidad tecnica del procesamiento.",
+                    "No se generaron imágenes PNG a partir de los resultados NIfTI.",
+                    "El PDF se emite igualmente para dejar trazabilidad técnica del procesamiento.",
                 ]
             )
         )
@@ -57,17 +57,17 @@ def _summary_page(
     warnings: list[str],
 ) -> dict:
     lines = [
-        "Informe tecnico de procesamiento de neuroimagen",
-        "Este documento resume los artefactos generados por el pipeline de procesamiento. No constituye un informe clinico validado.",
+        "Informe técnico de procesamiento de neuroimagen",
+        "Este documento resume los artefactos generados por el pipeline de procesamiento. No constituye un informe clínico validado.",
         f"Nombre del estudio: {metadata.study_name}",
         f"ID interno del estudio: {metadata.study_id}",
         f"Sujeto BIDS: {metadata.bids_subject_id or 'n/a'}",
         f"Fecha de subida: {_format_datetime(metadata.uploaded_at)}",
         f"Fecha de procesamiento: {_format_datetime(metadata.processed_at)}",
         f"Backend usado: {metadata.pipeline_name or 'n/a'}",
-        f"Version del pipeline: {metadata.pipeline_version or 'n/a'}",
+        f"Versión del pipeline: {metadata.pipeline_version or 'n/a'}",
         f"Backend de plataforma: {metadata.processor_backend or 'n/a'}",
-        f"Ruta logica de outputs: {metadata.logical_output_path}",
+        f"Ruta lógica de resultados: {metadata.logical_output_path}",
         "Ficheros NIfTI procesados:",
     ]
     nifti_outputs = [artifact.display_name for artifact in rendered_outputs]
@@ -78,7 +78,7 @@ def _summary_page(
     if len(nifti_outputs) > 80:
         lines.append(f"- ... {len(nifti_outputs) - 80} ficheros adicionales")
     if output_files:
-        lines.append("Listado de outputs detectados:")
+        lines.append("Listado de resultados detectados:")
         lines.extend(f"- {path.as_posix()}" for path in output_files[:80])
         if len(output_files) > 80:
             lines.append(f"- ... {len(output_files) - 80} ficheros adicionales")
@@ -87,7 +87,7 @@ def _summary_page(
         lines.append("Avisos de renderizado:")
         lines.extend(f"- {artifact.display_name}: {artifact.error_message or 'error no especificado'}" for artifact in failed)
     if warnings:
-        lines.append("Avisos tecnicos:")
+        lines.append("Avisos técnicos:")
         lines.extend(f"- {warning}" for warning in warnings)
     return _text_page(lines)
 

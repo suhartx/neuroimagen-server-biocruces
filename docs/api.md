@@ -5,7 +5,7 @@ Swagger está disponible en `/api/docs`.
 ## Endpoints
 
 - `GET /api/health`: healthcheck.
-- `POST /api/auth/login`: login local con email y contraseña.
+- `POST /api/auth/login`: login local con correo electrónico y contraseña.
 - `POST /api/auth/logout`: registrar cierre de sesión cliente.
 - `GET /api/auth/me`: usuario autenticado actual.
 - `GET /api/admin/dashboard`: resumen operativo global. Solo admin.
@@ -23,9 +23,9 @@ Swagger está disponible en `/api/docs`.
 - `GET /api/studies/{study_id}/download`: descargar PDF técnico si está completado. Alias compatible.
 - `GET /api/studies/{study_id}/download/pdf`: descargar PDF técnico si el usuario tiene permiso.
 - `GET /api/studies/{study_id}/download/zip`: descargar ZIP de resultados si existe y el usuario tiene permiso.
-- `POST /api/studies/{study_id}/share-links`: crear link temporal para descargar el PDF técnico. Requiere propietario o admin.
-- `GET /api/studies/{study_id}/share-links`: listar links compartidos de un estudio. Requiere propietario o admin.
-- `POST /api/studies/{study_id}/share-links/{link_id}/revoke`: revocar un link compartido. Requiere propietario o admin.
+- `POST /api/studies/{study_id}/share-links`: crear enlace temporal para descargar el PDF técnico. Requiere propietario o admin.
+- `GET /api/studies/{study_id}/share-links`: listar enlaces compartidos de un estudio. Requiere propietario o admin.
+- `POST /api/studies/{study_id}/share-links/{link_id}/revoke`: revocar un enlace compartido. Requiere propietario o admin.
 - `GET /api/share/{token}/pdf`: descargar PDF técnico mediante token temporal, sin login.
 
 Salvo `GET /api/health` y `POST /api/auth/login`, los endpoints funcionales requieren `Authorization: Bearer <token>`.
@@ -103,7 +103,7 @@ Cada estudio queda asociado al usuario autenticado mediante `owner_user_id`.
 
 ## Compartición De Informes
 
-`POST /api/studies/{study_id}/share-links` crea un link temporal para un estudio completado con PDF disponible. El body es opcional:
+`POST /api/studies/{study_id}/share-links` crea un enlace temporal para un estudio completado con PDF disponible. El body es opcional:
 
 ```json
 {
@@ -111,7 +111,7 @@ Cada estudio queda asociado al usuario autenticado mediante `owner_user_id`.
 }
 ```
 
-La respuesta incluye el link completo solo en el momento de creación:
+La respuesta incluye el enlace completo solo en el momento de creación:
 
 ```json
 {
@@ -128,7 +128,7 @@ La respuesta incluye el link completo solo en el momento de creación:
 }
 ```
 
-El token no se almacena en claro: la base de datos guarda solo un hash. `GET /api/studies/{study_id}/share-links` lista metadatos de links, pero no puede recuperar tokens ya creados. Si se pierde un link, hay que revocarlo o crear uno nuevo.
+El token no se almacena en claro: la base de datos guarda solo un hash. `GET /api/studies/{study_id}/share-links` lista metadatos de enlaces, pero no puede recuperar tokens ya creados. Si se pierde un enlace, hay que revocarlo o crear uno nuevo.
 
 `GET /api/share/{token}/pdf` descarga únicamente el PDF técnico si el token existe, no caducó y no fue revocado. Tokens inválidos, caducados o revocados responden `404` para no facilitar enumeración.
 
@@ -142,7 +142,7 @@ Cada creación, revocación y descarga por token queda registrada en auditoría.
 - `403`: usuario autenticado sin permisos suficientes.
 - `404`: estudio o PDF no encontrado.
 - `404`: ZIP no disponible.
-- `404`: link público inválido, caducado o revocado.
+- `404`: enlace público inválido, caducado o revocado.
 - `409`: operación no permitida para el estado actual del job.
 - `409`: intento de compartir un estudio sin PDF completado.
 - `413`: fichero demasiado grande.

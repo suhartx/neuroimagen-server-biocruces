@@ -44,7 +44,15 @@ El fichero `.env` no debe commitearse. Puede contener contraseñas, rutas locale
 | `CORS_ORIGINS` | Orígenes permitidos para llamadas desde navegador. | `http://localhost,http://localhost:5173` |
 | `AUTH_SECRET_KEY` | Clave HMAC para firmar tokens JWT. Debe cambiarse fuera de desarrollo. | `change-me-in-production` |
 | `AUTH_ACCESS_TOKEN_EXPIRE_MINUTES` | Duración del access token local. | `480` |
-| `SHARE_LINK_EXPIRE_HOURS` | Caducidad por defecto de links temporales de descarga PDF. | `72` |
+| `SHARE_LINK_EXPIRE_HOURS` | Caducidad por defecto de enlaces temporales de descarga PDF. | `72` |
+| `APP_PUBLIC_BASE_URL` | URL pública incluida en los correos de notificación. | `http://100.114.173.115` |
+| `NOTIFICATIONS_EMAIL_ENABLED` | Activa el intento de envío SMTP además de notificaciones internas. | `true` en Docker Compose |
+| `SMTP_HOST` | Servidor SMTP usado por el worker para enviar correos electrónicos. | `mailpit` |
+| `SMTP_PORT` | Puerto SMTP. | `1025` |
+| `SMTP_USERNAME` | Usuario SMTP si el relay requiere autenticación. | vacío |
+| `SMTP_PASSWORD` | Contraseña o API key SMTP. No commitear. | vacío |
+| `SMTP_FROM_EMAIL` | Remitente autorizado por el servidor SMTP. | `noreply@neuroimagen.com` |
+| `SMTP_USE_TLS` | Usa STARTTLS antes de autenticar. | `false` con Mailpit |
 
 ## Usuario Admin Inicial
 
@@ -58,7 +66,29 @@ El comando solicita la contraseña por consola y ejecuta `python -m app.cli.crea
 
 La autenticación local usa JWT firmado con `AUTH_SECRET_KEY`. En desarrollo existe un valor por defecto, pero en cualquier entorno compartido debe configurarse una clave propia y no commitearla. La API rechaza arrancar fuera de `development` si la clave sigue siendo el valor por defecto o es demasiado corta.
 
-Los links de compartición usan tokens aleatorios opacos y solo guardan su hash en base de datos. `SHARE_LINK_EXPIRE_HOURS` define la caducidad por defecto cuando el usuario crea un link desde la GUI o la API.
+Los enlaces de compartición usan tokens aleatorios opacos y solo guardan su hash en base de datos. `SHARE_LINK_EXPIRE_HOURS` define la caducidad por defecto cuando el usuario crea un enlace desde la GUI o la API.
+
+## Notificaciones Por SMTP
+
+En desarrollo Docker Compose usa Mailpit por defecto. Mailpit captura correos en `http://localhost:8025`, pero no entrega mensajes a Internet. Para enviar a Gmail u otros buzones reales hay que usar un relay SMTP autenticado o un dominio con SPF/DKIM correctos.
+
+Los ficheros `.env.example` y `.env.compneuro.example` incluyen la configuración SMTP de Brevo preparada para este despliegue, con `SMTP_PASSWORD` vacío. La clave SMTP real debe añadirse solo en `.env` local y nunca debe commitearse.
+
+Configuración ejemplo con Brevo:
+
+```env
+NOTIFICATIONS_EMAIL_ENABLED=true
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USERNAME=usuario-smtp-de-brevo
+SMTP_PASSWORD=clave-smtp-generada-en-brevo
+SMTP_FROM_EMAIL=remitente-verificado-en-brevo
+SMTP_USE_TLS=true
+```
+
+`SMTP_FROM_EMAIL` debe ser un remitente verificado en Brevo o pertenecer a un dominio verificado allí. No uses `noreply@neuroimagen.com` salvo que el dominio esté autorizado con SPF/DKIM en el proveedor.
+
+El envío lo ejecuta el servicio `worker` cuando cierra un procesamiento. Si se cambia la configuración SMTP, reiniciar `api` y `worker`; reiniciar solo la API no actualiza el proceso que envía los correos.
 
 ## `PROCESSOR_COMMAND`
 
