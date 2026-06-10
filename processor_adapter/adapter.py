@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import os
+import signal
 import shlex
 import subprocess
 import time
@@ -9,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from processor_adapter.artifacts import list_output_files
+from processor_adapter.cancellation import ProcessorCanceled
 
 
 @dataclass(frozen=True)
@@ -75,14 +77,11 @@ class DummyProcessorAdapter:
 
     def _run_command(self, command: str, log_path: Path, started: float) -> tuple[subprocess.CompletedProcess[str] | None, float]:
         try:
-            completed = subprocess.run(
-                command,
-                shell=True,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_seconds or None,
-            )
+            completed = _run_external_command(command, self.timeout_seconds)
+        except ProcessorCanceled:
+            duration = time.monotonic() - started
+            log_path.write_text(f"COMMAND: {command}\nCANCELED: true\n", encoding="utf-8")
+            raise
         except Exception as exc:  # pragma: no cover - defensive around external tools
             duration = time.monotonic() - started
             log_path.write_text(f"COMMAND: {command}\nERROR: {exc}\n", encoding="utf-8")
@@ -213,15 +212,14 @@ class CompneuroAnatprocAdapter:
         env = os.environ.copy()
         env.setdefault("PROJECT_PATH", str(self.project_mount))
         try:
-            completed = subprocess.run(
-                command,
-                shell=True,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_seconds or None,
-                env=env,
+            completed = _run_external_command(command, self.timeout_seconds, env=env)
+        except ProcessorCanceled:
+            duration = time.monotonic() - started
+            log_path.write_text(
+                f"COMMAND: {command}\nPROJECT_MOUNT: {self.project_mount}\nCANCELED: true\n",
+                encoding="utf-8",
             )
+            raise
         except Exception as exc:  # pragma: no cover - defensive around external tools
             duration = time.monotonic() - started
             log_path.write_text(f"COMMAND: {command}\nERROR: {exc}\n", encoding="utf-8")
@@ -246,6 +244,68 @@ class CompneuroAnatprocAdapter:
 
 
 ProcessorAdapter = DummyProcessorAdapter
+
+
+def _run_external_command(
+    command: str,
+    timeout_seconds: int = 0,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    process = subprocess.Popen(
+        command,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    previous_handlers = {
+        signal.SIGTERM: signal.getsignal(signal.SIGTERM),
+        signal.SIGINT: signal.getsignal(signal.SIGINT),
+    }
+
+    def handle_cancel(signum, _frame):
+        _terminate_process_group(process)
+        raise ProcessorCanceled(f"Procesamiento cancelado por señal {signum}")
+
+    for signum in previous_handlers:
+        signal.signal(signum, handle_cancel)
+    try:
+        stdout, stderr = process.communicate(timeout=timeout_seconds or None)
+    except subprocess.TimeoutExpired:
+        _terminate_process_group(process)
+        raise
+    finally:
+        for signum, handler in previous_handlers.items():
+            signal.signal(signum, handler)
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def _terminate_process_group(process: subprocess.Popen[str]) -> None:
+    process_group_id = process.pid
+    try:
+        os.killpg(process_group_id, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        if process.poll() is None:
+            try:
+                process.wait(timeout=0.2)
+            except subprocess.TimeoutExpired:
+                pass
+        try:
+            os.killpg(process_group_id, 0)
+        except ProcessLookupError:
+            return
+        time.sleep(0.1)
+
+    try:
+        os.killpg(process_group_id, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
 
 
 def create_processor_adapter(

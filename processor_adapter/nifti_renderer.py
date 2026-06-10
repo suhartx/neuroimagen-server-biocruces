@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import os
 import re
+import signal
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+
+from processor_adapter.cancellation import ProcessorCanceled
 
 
 class CommandRunner(Protocol):
@@ -41,7 +46,7 @@ def render_nifti_outputs(
     runner: CommandRunner | None = None,
     log_path: Path | None = None,
 ) -> list[RenderedNifti]:
-    runner = runner or subprocess.run
+    runner = runner or _run_render_command
     rendered_png_dir.mkdir(parents=True, exist_ok=True)
     artifacts: list[RenderedNifti] = []
     log_lines: list[str] = []
@@ -59,6 +64,8 @@ def render_nifti_outputs(
                 text=True,
                 timeout=timeout_seconds or None,
             )
+        except ProcessorCanceled:
+            raise
         except Exception as exc:  # pragma: no cover - defensive around external tools
             message = _public_error(exc)
             log_lines.append(f"ERROR: {message}")
@@ -119,3 +126,63 @@ def _public_error(exc: Exception) -> str:
     if isinstance(exc, FileNotFoundError):
         return "no se encontró la herramienta de renderizado"
     return "error renderizando NIfTI"
+
+
+def _run_render_command(
+    args: list[str],
+    **kwargs: object,
+) -> subprocess.CompletedProcess[str]:
+    timeout = kwargs.get("timeout")
+    process = subprocess.Popen(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    previous_handlers = {
+        signal.SIGTERM: signal.getsignal(signal.SIGTERM),
+        signal.SIGINT: signal.getsignal(signal.SIGINT),
+    }
+
+    def handle_cancel(signum, _frame):
+        _terminate_process_group(process)
+        raise ProcessorCanceled(f"Procesamiento cancelado por señal {signum}")
+
+    for signum in previous_handlers:
+        signal.signal(signum, handle_cancel)
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _terminate_process_group(process)
+        raise
+    finally:
+        for signum, handler in previous_handlers.items():
+            signal.signal(signum, handler)
+    return subprocess.CompletedProcess(args, process.returncode, stdout, stderr)
+
+
+def _terminate_process_group(process: subprocess.Popen[str]) -> None:
+    process_group_id = process.pid
+    try:
+        os.killpg(process_group_id, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        if process.poll() is None:
+            try:
+                process.wait(timeout=0.2)
+            except subprocess.TimeoutExpired:
+                pass
+        try:
+            os.killpg(process_group_id, 0)
+        except ProcessLookupError:
+            return
+        time.sleep(0.1)
+
+    try:
+        os.killpg(process_group_id, signal.SIGKILL)
+    except ProcessLookupError:
+        pass

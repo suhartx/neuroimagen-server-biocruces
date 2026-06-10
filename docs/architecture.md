@@ -193,13 +193,14 @@ stateDiagram-v2
   queued --> processing
   processing --> completed
   processing --> failed
+  processing --> canceled
   completed --> [*]
   failed --> [*]
 ```
 
 Estados futuros documentados: `review_pending`, `reviewed`, `rejected`, `archived`.
 
-La cancelación implementada se limita a trabajos en cola y usa el estado `canceled`. La cancelación de procesos ya en ejecución queda fuera porque requiere gestionar de forma segura procesos externos de FSL/`compneuro`.
+La cancelación implementada usa el estado `canceled` para trabajos en cola y en procesamiento. En cola se revoca la tarea pendiente; durante procesamiento la API pide a Celery terminar la tarea y el adaptador ejecuta el procesador externo en un grupo de procesos propio para propagar la señal a scripts/hijos de FSL o `compneuro`.
 
 No se añade un estado `bids_prepared` en la primera integración: la preparación BIDS ocurre antes de encolar y queda trazada mediante campos y auditoría. Si falla, la subida responde con error y no crea un estudio procesable.
 

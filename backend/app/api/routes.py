@@ -20,7 +20,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -756,22 +756,71 @@ def get_study_logs(
 
 
 @router.post("/studies/{study_id}/cancel", response_model=StudyActionResponse)
-def cancel_queued_study(
+def cancel_study_processing(
     request: Request,
     study_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StudyActionResponse:
     study = _get_visible_study(db, study_id, current_user)
-    if study.status != StudyStatus.queued:
+    if study.status not in {StudyStatus.queued, StudyStatus.processing}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Solo se pueden cancelar jobs en cola",
+            detail="Solo se pueden cancelar jobs en cola o en procesamiento",
         )
     job = _latest_job(study)
-    if job and job.celery_task_id:
-        process_study.app.control.revoke(job.celery_task_id)
+    was_processing = study.status == StudyStatus.processing
+    if was_processing and (not job or not job.celery_task_id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede cancelar un procesamiento sin tarea Celery asociada",
+        )
     now = datetime.utcnow()
+    if was_processing:
+        updated_studies = db.execute(
+            update(Study)
+            .where(Study.id == study.id, Study.status == StudyStatus.processing)
+            .values(error_message="Cancelación solicitada por el usuario")
+        ).rowcount
+        updated_jobs = db.execute(
+            update(ProcessingJob)
+            .where(
+                ProcessingJob.id == job.id,
+                ProcessingJob.status == StudyStatus.processing.value,
+            )
+            .values(error_message="Cancelación solicitada por el usuario")
+        ).rowcount
+        if updated_studies != 1 or updated_jobs != 1:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El procesamiento ya no está activo",
+            )
+        record_event(
+            db,
+            "study_cancellation_requested",
+            study.id,
+            {"job_id": str(job.id) if job else None},
+            actor=current_user.email,
+            actor_user_id=current_user.id,
+            ip_address=client_ip(request),
+        )
+        db.commit()
+        db.refresh(study)
+        process_study.app.control.revoke(
+            job.celery_task_id,
+            terminate=True,
+            signal="SIGTERM",
+        )
+        return StudyActionResponse(
+            id=study.id,
+            status=study.status.value,
+            message="Cancelación solicitada",
+        )
+
+    if job and job.celery_task_id:
+        process_study.app.control.revoke(job.celery_task_id, terminate=False)
+
     study.status = StudyStatus.canceled
     study.processing_finished_at = now
     study.error_message = "Cancelado por el usuario"
@@ -790,7 +839,7 @@ def cancel_queued_study(
     )
     db.commit()
     return StudyActionResponse(
-        id=study.id, status=study.status.value, message="Job cancelado"
+        id=study.id, status=study.status.value, message="Procesamiento cancelado"
     )
 
 

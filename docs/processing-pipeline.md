@@ -34,6 +34,10 @@ sequenceDiagram
   F->>A: Consulta estudios
   F->>A: Consulta notificaciones
   F->>A: Descarga PDF tecnico / ZIP
+  U->>F: Cancela un estudio en cola o procesamiento
+  F->>A: POST /api/studies/{id}/cancel
+  A->>R: Revoca tarea pendiente o solicita terminacion SIGTERM
+  W->>D: canceled si la tarea estaba ejecutando
 ```
 
 ## Contrato Del Adaptador
@@ -66,7 +70,7 @@ El adaptador elige el comando según `PROCESSOR_BACKEND`. El backend `dummy` eje
 PROCESSOR_COMMAND=python /app/external_processor/dummy_processor.py --input {input_dir} --output {output_dir} --study-id {study_id}
 ```
 
-El adaptador valida entrada, crea salida, captura stdout/stderr y guarda logs. En `dummy` comprueba que se genere al menos un PDF. En `compneuro` ejecuta `COMPNEURO_COMMAND`, por defecto `bash /app/src/apreproc_launcher.sh`, comprueba exit code `0` y valida que existan `Preproc/BET` y `Preproc/ProbTissue`.
+El adaptador valida entrada, crea salida, captura stdout/stderr y guarda logs. En `dummy` comprueba que se genere al menos un PDF. En `compneuro` ejecuta `COMPNEURO_COMMAND`, por defecto `bash /app/src/apreproc_launcher.sh`, comprueba exit code `0` y valida que existan `Preproc/BET` y `Preproc/ProbTissue`. El comando externo se ejecuta en un grupo de procesos propio para poder terminarlo si el usuario cancela un estudio ya iniciado.
 
 Para otro script o contenedor, la interfaz mínima esperada por la plataforma es:
 
