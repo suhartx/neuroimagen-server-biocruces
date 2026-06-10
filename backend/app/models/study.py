@@ -63,4 +63,7 @@ class Study(Base):
     audit_events = relationship(
         "AuditEvent", back_populates="study", cascade="all, delete-orphan"
     )
+    share_links = relationship(
+        "ShareLink", back_populates="study", cascade="all, delete-orphan"
+    )
     owner = relationship("User", back_populates="studies")

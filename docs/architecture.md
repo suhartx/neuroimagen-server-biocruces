@@ -56,14 +56,16 @@ Esta decisión no obliga a usar siempre esa imagen ni ese launcher. La frontera 
 
 ## Modelo ER
 
-El modelo siguiente refleja el estado implementado actualmente, incluyendo autenticación local y propietario por estudio.
+El modelo siguiente refleja el estado implementado actualmente, incluyendo autenticación local, propietario por estudio y links temporales de compartición PDF.
 
 ```mermaid
 erDiagram
   User ||--o{ Study : owns
   User ||--o{ AuditEvent : performs
+  User ||--o{ ShareLink : creates
   Study ||--o{ ProcessingJob : has
   Study ||--o{ AuditEvent : emits
+  Study ||--o{ ShareLink : shares
   User {
     uuid id PK
     string email
@@ -126,6 +128,17 @@ erDiagram
     string actor
     string ip_address
   }
+  ShareLink {
+    uuid id PK
+    uuid study_id FK
+    uuid created_by_user_id FK
+    string token_hash
+    datetime expires_at
+    datetime revoked_at
+    datetime created_at
+    datetime last_accessed_at
+    int access_count
+  }
 ```
 
 ## Arquitectura Multiusuario
@@ -137,13 +150,15 @@ Reglas implementadas:
 - `admin` puede ver todos los estudios y crear usuarios.
 - `admin` puede consultar el dashboard operativo global con cola, jobs, uso de disco, healthchecks, usuarios y estudios por estado.
 - `researcher` puede subir estudios, ver historial propio y descargar resultados propios.
+- `admin` y propietario pueden crear/revocar links temporales para compartir solo el PDF técnico de estudios completados.
+- Los receptores externos descargan por token opaco sin cuenta, sin acceso a ZIP, logs, detalle ni enumeración de estudios.
 - Los usuarios iniciales se crean por admin; no hay registro público abierto.
 - El usuario admin inicial se crea con `make create-admin EMAIL=...`.
 - El flujo de procesamiento sigue aislado detrás de `processor_adapter`; autenticación y permisos pertenecen a la capa API.
 
 Evolución posterior:
 
-- Un rol `viewer` completo no entra en la implementación actual. La compartición futura debe resolverse con enlaces firmados, caducidad, revocación y auditoría.
+- Un rol `viewer` completo no entra en la implementación actual. La compartición actual se limita a PDF técnico mediante token temporal opaco, caducidad, revocación y auditoría.
 - Google/OIDC y ORCID deben vincularse a usuarios internos existentes o aprovisionados, sin sustituir el modelo de permisos propio.
 - Backups y restore local ya se cubren como operación CLI; retención automática queda para una fase posterior.
 

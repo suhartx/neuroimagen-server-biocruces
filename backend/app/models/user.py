@@ -41,6 +41,7 @@ class User(Base):
 
     studies = relationship("Study", back_populates="owner")
     audit_events = relationship("AuditEvent", back_populates="actor_user")
+    share_links = relationship("ShareLink", back_populates="created_by")
 
     @property
     def is_admin(self) -> bool:

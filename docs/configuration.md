@@ -44,6 +44,7 @@ El fichero `.env` no debe commitearse. Puede contener contraseñas, rutas locale
 | `CORS_ORIGINS` | Orígenes permitidos para llamadas desde navegador. | `http://localhost,http://localhost:5173` |
 | `AUTH_SECRET_KEY` | Clave HMAC para firmar tokens JWT. Debe cambiarse fuera de desarrollo. | `change-me-in-production` |
 | `AUTH_ACCESS_TOKEN_EXPIRE_MINUTES` | Duración del access token local. | `480` |
+| `SHARE_LINK_EXPIRE_HOURS` | Caducidad por defecto de links temporales de descarga PDF. | `72` |
 
 ## Usuario Admin Inicial
 
@@ -56,6 +57,8 @@ make create-admin EMAIL=admin@example.org
 El comando solicita la contraseña por consola y ejecuta `python -m app.cli.create_admin` dentro del contenedor `api`.
 
 La autenticación local usa JWT firmado con `AUTH_SECRET_KEY`. En desarrollo existe un valor por defecto, pero en cualquier entorno compartido debe configurarse una clave propia y no commitearla. La API rechaza arrancar fuera de `development` si la clave sigue siendo el valor por defecto o es demasiado corta.
+
+Los links de compartición usan tokens aleatorios opacos y solo guardan su hash en base de datos. `SHARE_LINK_EXPIRE_HOURS` define la caducidad por defecto cuando el usuario crea un link desde la GUI o la API.
 
 ## `PROCESSOR_COMMAND`
 

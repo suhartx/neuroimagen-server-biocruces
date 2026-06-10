@@ -23,8 +23,14 @@ Swagger está disponible en `/api/docs`.
 - `GET /api/studies/{study_id}/download`: descargar PDF técnico si está completado. Alias compatible.
 - `GET /api/studies/{study_id}/download/pdf`: descargar PDF técnico si el usuario tiene permiso.
 - `GET /api/studies/{study_id}/download/zip`: descargar ZIP de resultados si existe y el usuario tiene permiso.
+- `POST /api/studies/{study_id}/share-links`: crear link temporal para descargar el PDF técnico. Requiere propietario o admin.
+- `GET /api/studies/{study_id}/share-links`: listar links compartidos de un estudio. Requiere propietario o admin.
+- `POST /api/studies/{study_id}/share-links/{link_id}/revoke`: revocar un link compartido. Requiere propietario o admin.
+- `GET /api/share/{token}/pdf`: descargar PDF técnico mediante token temporal, sin login.
 
 Salvo `GET /api/health` y `POST /api/auth/login`, los endpoints funcionales requieren `Authorization: Bearer <token>`.
+
+La excepción funcional adicional es `GET /api/share/{token}/pdf`: no requiere JWT porque el propio token opaco habilita una descarga temporal del PDF.
 
 ## Autenticación
 
@@ -95,6 +101,39 @@ Cada estudio queda asociado al usuario autenticado mediante `owner_user_id`.
 
 `DELETE /api/studies/{study_id}` aplica soft delete con `deleted_at`, registra auditoría y borra físicamente la carpeta del estudio. Si el estudio está `processing`, responde `409`.
 
+## Compartición De Informes
+
+`POST /api/studies/{study_id}/share-links` crea un link temporal para un estudio completado con PDF disponible. El body es opcional:
+
+```json
+{
+  "expires_in_hours": 72
+}
+```
+
+La respuesta incluye el link completo solo en el momento de creación:
+
+```json
+{
+  "id": "...",
+  "study_id": "...",
+  "url": "http://localhost/api/share/<token>/pdf",
+  "created_at": "...",
+  "expires_at": "...",
+  "revoked_at": null,
+  "last_accessed_at": null,
+  "access_count": 0,
+  "is_expired": false,
+  "is_revoked": false
+}
+```
+
+El token no se almacena en claro: la base de datos guarda solo un hash. `GET /api/studies/{study_id}/share-links` lista metadatos de links, pero no puede recuperar tokens ya creados. Si se pierde un link, hay que revocarlo o crear uno nuevo.
+
+`GET /api/share/{token}/pdf` descarga únicamente el PDF técnico si el token existe, no caducó y no fue revocado. Tokens inválidos, caducados o revocados responden `404` para no facilitar enumeración.
+
+Cada creación, revocación y descarga por token queda registrada en auditoría.
+
 ## Errores Esperados
 
 - `400`: extensión no permitida.
@@ -103,7 +142,9 @@ Cada estudio queda asociado al usuario autenticado mediante `owner_user_id`.
 - `403`: usuario autenticado sin permisos suficientes.
 - `404`: estudio o PDF no encontrado.
 - `404`: ZIP no disponible.
+- `404`: link público inválido, caducado o revocado.
 - `409`: operación no permitida para el estado actual del job.
+- `409`: intento de compartir un estudio sin PDF completado.
 - `413`: fichero demasiado grande.
 
 ## Extensiones Permitidas

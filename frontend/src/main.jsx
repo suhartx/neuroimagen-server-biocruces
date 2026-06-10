@@ -17,6 +17,9 @@ function App() {
   const [adminDashboard, setAdminDashboard] = useState(null);
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [selectedLogs, setSelectedLogs] = useState(null);
+  const [shareStudy, setShareStudy] = useState(null);
+  const [shareLinks, setShareLinks] = useState([]);
+  const [generatedShareUrl, setGeneratedShareUrl] = useState('');
   const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'researcher' });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -123,6 +126,9 @@ function App() {
     setStudies([]);
     setUsers([]);
     setAdminDashboard(null);
+    setShareStudy(null);
+    setShareLinks([]);
+    setGeneratedShareUrl('');
     setMessage('');
   }
 
@@ -206,6 +212,61 @@ function App() {
     setSelectedLogs(null);
   }
 
+  async function openSharePanel(study) {
+    setGeneratedShareUrl('');
+    setShareStudy(study);
+    const response = await authFetch(`${API_BASE}/studies/${study.id}/share-links`);
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudieron cargar los links compartidos.');
+      return;
+    }
+    setShareLinks(payload);
+  }
+
+  async function createShareLink() {
+    if (!shareStudy) return;
+    const response = await authFetch(`${API_BASE}/studies/${shareStudy.id}/share-links`, { method: 'POST' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo crear el link compartido.');
+      return;
+    }
+    setGeneratedShareUrl(payload.url);
+    setShareLinks([payload, ...shareLinks]);
+    setMessage('Link temporal creado. Copialo y compartilo solo con destinatarios autorizados.');
+  }
+
+  async function revokeShareLink(link) {
+    if (!shareStudy) return;
+    if (!window.confirm('¿Seguro que querés revocar este link?')) return;
+    const response = await authFetch(`${API_BASE}/studies/${shareStudy.id}/share-links/${link.id}/revoke`, { method: 'POST' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo revocar el link.');
+      return;
+    }
+    setShareLinks(shareLinks.map((item) => (item.id === payload.id ? payload : item)));
+    setMessage('Link revocado.');
+  }
+
+  async function copyShareUrl() {
+    if (!generatedShareUrl) return;
+    try {
+      await navigator.clipboard.writeText(generatedShareUrl);
+      setMessage('Link copiado al portapapeles.');
+    } catch {
+      const input = document.querySelector('.share-url input');
+      input?.focus();
+      input?.select();
+      if (document.execCommand?.('copy')) {
+        setMessage('Link copiado al portapapeles.');
+        return;
+      }
+      setMessage('No se pudo copiar automáticamente; el link quedó seleccionado. Usá Ctrl+C.');
+    }
+  }
+
   async function loadStudyLogs(study) {
     const response = await authFetch(`${API_BASE}/studies/${study.id}/logs?lines=200`);
     const payload = await response.json().catch(() => ({}));
@@ -235,6 +296,9 @@ function App() {
     setMessage(payload.message || 'Operación completada.');
     setSelectedDetail(null);
     setSelectedLogs(null);
+    setShareStudy(null);
+    setShareLinks([]);
+    setGeneratedShareUrl('');
     await loadStudies();
     await loadAdminDashboard();
   }
@@ -384,6 +448,7 @@ function App() {
                       <td className="actions-cell">
                         <button className="secondary compact" onClick={() => loadStudyDetail(study)}>Detalle</button>
                         <button className="secondary compact" onClick={() => loadStudyLogs(study)}>Logs</button>
+                        {study.has_pdf && study.status === 'completed' && <button className="secondary compact" onClick={() => openSharePanel(study)}>Compartir</button>}
                         {study.status === 'queued' && <button className="secondary compact" onClick={() => runStudyAction(study, 'cancel')}>Cancelar</button>}
                         {study.status === 'failed' && <button className="secondary compact" onClick={() => runStudyAction(study, 'retry')}>Reintentar</button>}
                         {study.status !== 'processing' && <button className="danger compact" onClick={() => runStudyAction(study, 'delete')}>Borrar</button>}
@@ -436,6 +501,60 @@ function App() {
                         <td>{job.finished_at ? new Date(job.finished_at).toLocaleString('es-ES') : <span className="muted">Pendiente</span>}</td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {shareStudy && (
+            <section className="card detail-card">
+              <div className="section-title">
+                <div>
+                  <h2>Compartir informe</h2>
+                  <p className="hint">Crea un link temporal para descargar solo el PDF técnico de <strong>{shareStudy.original_filename}</strong>.</p>
+                </div>
+                <button className="secondary" onClick={() => setShareStudy(null)}>Cerrar</button>
+              </div>
+              <div className="share-actions">
+                <button onClick={createShareLink}>Crear link temporal</button>
+                {generatedShareUrl && (
+                  <div className="share-url">
+                    <input type="url" value={generatedShareUrl} readOnly onFocus={(event) => event.target.select()} />
+                    <button className="secondary" onClick={copyShareUrl}>Copiar</button>
+                  </div>
+                )}
+              </div>
+              <div className="table-wrap small-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Creado</th>
+                      <th>Caduca</th>
+                      <th>Accesos</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shareLinks.map((link) => (
+                      <tr key={link.id}>
+                        <td>{formatDate(link.created_at)}</td>
+                        <td>{formatDate(link.expires_at)}</td>
+                        <td>{link.access_count}</td>
+                        <td>{shareLinkStatus(link)}</td>
+                        <td>
+                          {!link.is_revoked && !link.is_expired ? (
+                            <button className="danger compact" onClick={() => revokeShareLink(link)}>Revocar</button>
+                          ) : (
+                            <span className="muted">Sin acciones</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {shareLinks.length === 0 && (
+                      <tr><td colSpan="5" className="muted">No hay links compartidos para este estudio.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -571,6 +690,16 @@ function formatBytes(bytes) {
     unitIndex += 1;
   }
   return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleString('es-ES') : 'No informado';
+}
+
+function shareLinkStatus(link) {
+  if (link.is_revoked) return 'Revocado';
+  if (link.is_expired) return 'Caducado';
+  return 'Activo';
 }
 
 createRoot(document.getElementById('root')).render(<App />);

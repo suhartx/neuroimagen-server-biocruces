@@ -1,8 +1,11 @@
+from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 from uuid import UUID
 
 from app.models.audit_event import AuditEvent
 from app.models.processing_job import ProcessingJob
+from app.models.share_link import ShareLink
 from app.models.study import Study, StudyStatus
 from app.models.user import User, UserRole
 from app.schemas.admin import AdminServiceHealth
@@ -197,6 +200,120 @@ def test_owner_can_download_completed_report(client):
 
     assert download.status_code == 200
     assert download.headers["content-type"] == "application/pdf"
+
+
+def test_owner_can_create_and_use_share_link(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+    complete_study_with_pdf(client, study_id)
+
+    created = client.post(f"/api/studies/{study_id}/share-links", headers=headers)
+
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["url"].endswith("/pdf")
+    assert payload["is_revoked"] is False
+    assert payload["access_count"] == 0
+
+    download = client.get(urlparse(payload["url"]).path)
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "application/pdf"
+
+    links = client.get(f"/api/studies/{study_id}/share-links", headers=headers).json()
+    assert links[0]["access_count"] == 1
+    assert links[0]["last_accessed_at"] is not None
+
+    token = payload["url"].split("/share/", 1)[1].split("/", 1)[0]
+    db = client.app.state.testing_session_local()
+    link = db.query(ShareLink).one()
+    events = {event.event_type for event in db.query(AuditEvent).all()}
+    assert link.token_hash != token
+    assert "share_link_created" in events
+    assert "share_link_pdf_downloaded" in events
+    db.close()
+
+
+def test_non_owner_cannot_create_share_link(client):
+    owner_headers, _ = auth_headers(client, "owner@example.org", "secret-pass")
+    other_headers, _ = auth_headers(client, "other@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=owner_headers,
+    )
+    study_id = response.json()["id"]
+    complete_study_with_pdf(client, study_id)
+
+    created = client.post(f"/api/studies/{study_id}/share-links", headers=other_headers)
+
+    assert created.status_code == 404
+
+
+def test_share_link_requires_completed_pdf(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+
+    created = client.post(f"/api/studies/{study_id}/share-links", headers=headers)
+
+    assert created.status_code == 409
+
+
+def test_revoked_share_link_cannot_download_pdf(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+    complete_study_with_pdf(client, study_id)
+    created = client.post(
+        f"/api/studies/{study_id}/share-links", headers=headers
+    ).json()
+
+    revoked = client.post(
+        f"/api/studies/{study_id}/share-links/{created['id']}/revoke", headers=headers
+    )
+    download = client.get(urlparse(created["url"]).path)
+
+    assert revoked.status_code == 200
+    assert revoked.json()["is_revoked"] is True
+    assert download.status_code == 404
+
+
+def test_expired_share_link_cannot_download_pdf(client):
+    headers, _ = auth_headers(client, "researcher@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    study_id = response.json()["id"]
+    complete_study_with_pdf(client, study_id)
+    created = client.post(
+        f"/api/studies/{study_id}/share-links", headers=headers
+    ).json()
+
+    db = client.app.state.testing_session_local()
+    link = db.get(ShareLink, UUID(created["id"]))
+    link.expires_at = datetime.utcnow() - timedelta(hours=1)
+    db.commit()
+    db.close()
+
+    download = client.get(urlparse(created["url"]).path)
+
+    assert download.status_code == 404
 
 
 def test_study_detail_includes_jobs(client):
@@ -520,3 +637,16 @@ def auth_headers(
     )
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}, user_id
+
+
+def complete_study_with_pdf(client, study_id: str) -> Path:
+    db = client.app.state.testing_session_local()
+    study = db.get(Study, UUID(study_id))
+    report_path = Path(study.output_path) / "reports" / "technical_report.pdf"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_bytes(b"%PDF-1.4\n%%EOF\n")
+    study.status = StudyStatus.completed
+    study.pdf_path = str(report_path)
+    db.commit()
+    db.close()
+    return report_path
