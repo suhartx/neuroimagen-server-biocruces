@@ -20,6 +20,7 @@
 - Logs visibles en GUI con truncado.
 - Cancelación de jobs en cola, retry de fallidos y borrado controlado con auditoría mínima.
 - Dashboard admin protegido por rol.
+- Links temporales revocables para compartir solo PDFs técnicos, con token opaco hasheado y auditoría de descarga.
 
 Extensiones aceptadas por defecto: `.nii`, `.nii.gz`, `.dcm`, `.zip`, `.tar`, `.tar.gz`, `.gz`, `.json` y `.txt`.
 
@@ -32,7 +33,7 @@ La lista se configura mediante `ALLOWED_EXTENSIONS` y debe mantenerse alineada c
 
 ## Roadmap De Seguridad
 
-La identidad local, permisos básicos, trazabilidad de jobs, dashboard admin y backup/restore local por CLI ya están implementados como base de TFM. Las siguientes mejoras de seguridad deben centrarse en exposición real y ciclo de vida de datos: retención, TLS, hardening de host/contenedores y una política de sesión más robusta si el sistema se comparte fuera de un entorno controlado.
+La identidad local, permisos básicos, trazabilidad de jobs, dashboard admin, backup/restore local por CLI y compartición temporal de PDFs ya están implementados como base de TFM. Las siguientes mejoras de seguridad deben centrarse en exposición real y ciclo de vida de datos: retención, TLS, hardening de host/contenedores y una política de sesión más robusta si el sistema se comparte fuera de un entorno controlado.
 
 ### Autenticación Local Y Roles
 
@@ -65,13 +66,13 @@ Permisos esperados:
 - Google/OIDC queda como mejora futura para usuarios institucionales y debe poder convivir con login local.
 - ORCID queda como mejora futura si el uso investigador gana peso.
 - La restricción por dominio institucional debe configurarse por entorno, no hardcodearse.
-- El rol `viewer` completo queda fuera de la implementación actual; para compartir informes se recomiendan enlaces firmados temporales con revocación y auditoría.
+- El rol `viewer` completo queda fuera de la implementación actual; la compartición implementada usa links temporales revocables para PDFs técnicos.
 - 2FA queda fuera por ahora.
 
 ### Datos Y Descargas
 
-- Los links compartidos futuros deben usar tokens firmados, caducidad configurable y revocación.
-- Las descargas mediante token deben registrar auditoría.
+- Los links compartidos usan tokens opacos aleatorios, caducidad configurable y revocación.
+- Las descargas mediante token registran auditoría y no exponen ZIP ni logs.
 - Los emails futuros deben enviar enlaces, no adjuntos pesados.
 - Los logs visibles en GUI deben truncarse y evitar rutas internas sensibles.
 - El borrado de estudios aplica soft delete y borrado físico, conservando auditoría mínima.

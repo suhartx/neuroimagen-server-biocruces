@@ -72,6 +72,26 @@ class StudyLogsRead(BaseModel):
     logs: list[StudyLogEntry] = Field(default_factory=list)
 
 
+class ShareLinkCreate(BaseModel):
+    expires_in_hours: int | None = Field(default=None, ge=1, le=720)
+
+
+class ShareLinkRead(BaseModel):
+    id: UUID
+    study_id: UUID
+    created_at: datetime
+    expires_at: datetime
+    revoked_at: datetime | None = None
+    last_accessed_at: datetime | None = None
+    access_count: int
+    is_expired: bool
+    is_revoked: bool
+
+
+class ShareLinkCreateResponse(ShareLinkRead):
+    url: str
+
+
 class StudyActionResponse(BaseModel):
     id: UUID
     status: str

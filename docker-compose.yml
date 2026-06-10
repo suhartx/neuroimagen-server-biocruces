@@ -56,6 +56,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:5173}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-in-production}
       AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      SHARE_LINK_EXPIRE_HOURS: ${SHARE_LINK_EXPIRE_HOURS:-72}
     depends_on:
       postgres:
         condition: service_healthy

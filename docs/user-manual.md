@@ -8,6 +8,7 @@
 6. Pulsa `Enviar a procesamiento`.
 7. Espera a que el estado pase de `En cola` a `Procesando` y luego a `Completado`. Puede tardar entre 10 minutos y 1 hora.
 8. Descarga el PDF técnico y, si aparece, el ZIP de resultados.
+9. Si necesitás compartir el PDF con alguien sin cuenta, usa `Compartir` para crear un link temporal y revocable.
 
 Si el estado es `Fallido`, avisa al administrador y no uses ese resultado.
 
@@ -24,8 +25,15 @@ Desde la tabla de estudios se puede:
 - Cancelar estudios que siguen en cola.
 - Reintentar estudios fallidos.
 - Borrar estudios que no están procesando.
+- Compartir el PDF técnico de estudios completados mediante links temporales.
 
 El borrado elimina físicamente los ficheros asociados y deja auditoría mínima en base de datos.
+
+## Compartición De Informes
+
+En estudios `Completado` con PDF disponible, el botón `Compartir` permite crear un link temporal. Ese link permite descargar solo el PDF técnico, no el ZIP ni los logs, y no requiere crear una cuenta para el receptor.
+
+Los links caducan automáticamente y pueden revocarse desde la misma pantalla. Si se pierde un link ya creado, no se puede recuperar porque el sistema no guarda el token en claro; creá uno nuevo y revocá el anterior si corresponde.
 
 ## Usuarios Y Roles
 
@@ -46,4 +54,4 @@ Después, el admin puede crear usuarios `researcher` o `admin` desde la GUI.
 
 El dashboard admin muestra cola, jobs fallidos, servicios, uso de disco, usuarios y estudios por estado. Sirve para diagnóstico operativo; no sustituye la revisión de logs si un procesamiento falla.
 
-Quedan para fases posteriores la compartición mediante enlaces, notificaciones por email, subida múltiple, retención automática y revisión clínica formal.
+Quedan para fases posteriores las notificaciones por email, subida múltiple, retención automática y revisión clínica formal.

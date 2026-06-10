@@ -83,7 +83,7 @@ input[type="file"] {
   padding: 12px;
 }
 
-input[type="text"], input[type="email"], input[type="password"], select {
+input[type="text"], input[type="email"], input[type="password"], input[type="url"], select {
   flex: 0 1 180px;
   border: 1px solid #c6d6df;
   border-radius: 12px;
@@ -162,6 +162,22 @@ code {
   margin-left: 8px;
   background: #e6f0f4;
   color: #12324a;
+}
+
+.share-actions {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.share-url {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.share-url input {
+  flex: 1 1 420px;
 }
 
 .table-wrap {

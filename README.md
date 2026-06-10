@@ -124,7 +124,6 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 - Sin anonimización DICOM integrada.
 - Sin revisión clínica formal.
 - Sin retención automática de datos.
-- Sin compartición de informes mediante enlaces firmados.
 - Sin notificaciones por email.
 - Sin subida múltiple ni lotes.
 - Sin MinIO/S3 en esta versión.
@@ -134,6 +133,6 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 
 ## Roadmap
 
-El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La **Fase 4 — Backups y mantenimiento** ya añade backup/restore local mediante CLI para PostgreSQL y `data/studies`, con verificación posterior mediante `make smoke`. La siguiente fase recomendada es **Fase 5 — Compartición segura de informes**.
+El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La **Fase 5 — Compartición segura de informes** ya añade links temporales y revocables para descargar PDFs técnicos sin cuenta completa.
 
-Quedan para fases posteriores: Google/OIDC, ORCID, compartición mediante enlaces firmados, notificaciones, múltiples subidas, retención automática, cuotas, flujos de procesamiento configurables e integración institucional.
+Quedan para fases posteriores: Google/OIDC, ORCID, notificaciones, múltiples subidas, retención automática, cuotas, flujos de procesamiento configurables e integración institucional.
