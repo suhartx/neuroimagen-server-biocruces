@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from app.models.audit_event import AuditEvent
+from app.models.notification import Notification
 from app.models.processing_job import ProcessingJob
 from app.models.share_link import ShareLink
 from app.models.study import Study, StudyStatus
@@ -467,6 +468,69 @@ def test_admin_can_create_researcher_user(client):
     assert response.status_code == 201
     assert response.json()["email"] == "new@example.org"
     assert response.json()["role"] == "researcher"
+
+
+def test_user_can_update_notification_preferences(client):
+    headers, user_id = auth_headers(client, "researcher@example.org", "secret-pass")
+
+    current = client.get("/api/me/notification-preferences", headers=headers)
+    update = client.patch(
+        "/api/me/notification-preferences",
+        json={
+            "notify_on_processing_completed": False,
+            "notify_on_processing_failed": True,
+        },
+        headers=headers,
+    )
+
+    assert current.status_code == 200
+    assert current.json()["notify_on_processing_completed"] is True
+    assert update.status_code == 200
+    assert update.json() == {
+        "notify_on_processing_completed": False,
+        "notify_on_processing_failed": True,
+    }
+
+    db = client.app.state.testing_session_local()
+    user = db.get(User, user_id)
+    assert user.notify_on_processing_completed is False
+    db.close()
+
+
+def test_user_lists_and_marks_own_notifications(client):
+    headers, user_id = auth_headers(client, "researcher@example.org", "secret-pass")
+    other_id = create_test_user(client, "other@example.org", "secret-pass")
+
+    db = client.app.state.testing_session_local()
+    own = Notification(
+        recipient_user_id=user_id,
+        event_type="processing_completed",
+        title="Listo",
+        message="Tu estudio terminó",
+        email_status="disabled",
+    )
+    other = Notification(
+        recipient_user_id=other_id,
+        event_type="processing_failed",
+        title="Fallido",
+        message="Otro estudio falló",
+        email_status="disabled",
+    )
+    db.add_all([own, other])
+    db.commit()
+    own_id = own.id
+    other_id = other.id
+    db.close()
+
+    listed = client.get("/api/notifications", headers=headers)
+    marked = client.post(f"/api/notifications/{own_id}/read", headers=headers)
+    forbidden = client.post(f"/api/notifications/{other_id}/read", headers=headers)
+
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()] == [str(own_id)]
+    assert marked.status_code == 200
+    assert marked.json()["read_at"] is not None
+    assert forbidden.status_code == 404
 
 
 def test_researcher_cannot_create_users(client):

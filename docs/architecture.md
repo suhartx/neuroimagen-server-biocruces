@@ -1,6 +1,6 @@
 # Arquitectura
 
-El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo concreto de procesamiento. El procesador externo se invoca mediante `processor_adapter` como componente aislado y puede seleccionarse por configuración (`dummy` o `compneuro`).
+El sistema usa una arquitectura desacoplada para evitar que la API web dependa del algoritmo concreto de procesamiento. El procesador externo se invoca mediante `processor_adapter` como componente aislado y puede seleccionarse por configuración (`dummy` o `compneuro`). Al cerrar un procesamiento, el worker registra notificaciones internas y opcionalmente envía correos electrónicos por SMTP sin adjuntar resultados.
 
 ```mermaid
 flowchart TB
@@ -18,6 +18,7 @@ flowchart TB
     Script[procesador externo]
     Render[Render NIfTI a PNG con FSL slicer]
     Artifacts[PDF tecnico / ZIP]
+    Notify[Notificaciones internas / SMTP]
     Storage[(data/studies filesystem)]
   end
   Browser --> Proxy
@@ -35,6 +36,8 @@ flowchart TB
   Worker --> Render
   Render --> Artifacts
   Artifacts --> Storage
+  Worker --> Notify
+  Notify --> DB
 ```
 
 Para `compneuro-anatproc`, el servicio `worker` puede construirse con `worker/Dockerfile.compneuro`, derivado de `compneurobilbaolab/compneuro-anatproc:1.1`. No se usa Docker-in-Docker: Celery, el launcher externo y FSL `slicer` conviven en el mismo contenedor worker.
@@ -46,8 +49,8 @@ Esta decisión no obliga a usar siempre esa imagen ni ese launcher. La frontera 
 ## Componentes
 
 - `frontend`: interfaz simple para subida, listado, estado y descarga.
-- `api`: valida entradas, registra estudios, prepara BIDS, expone OpenAPI y descarga PDFs/ZIPs.
-- `worker`: ejecuta tareas largas fuera del ciclo HTTP.
+- `api`: valida entradas, registra estudios, prepara BIDS, expone OpenAPI, descarga PDF/ZIP y sirve notificaciones/preferencias.
+- `worker`: ejecuta tareas largas fuera del ciclo HTTP y dispara notificaciones al finalizar.
 - `processor_adapter`: interfaz estable con el procesador externo y estrategia por backend.
 - `postgres`: persistencia relacional.
 - `redis`: cola de tareas.
@@ -56,16 +59,18 @@ Esta decisión no obliga a usar siempre esa imagen ni ese launcher. La frontera 
 
 ## Modelo ER
 
-El modelo siguiente refleja el estado implementado actualmente, incluyendo autenticación local, propietario por estudio y links temporales de compartición PDF.
+El modelo siguiente refleja el estado implementado actualmente, incluyendo autenticación local, propietario por estudio, enlaces temporales de compartición PDF y notificaciones.
 
 ```mermaid
 erDiagram
   User ||--o{ Study : owns
   User ||--o{ AuditEvent : performs
   User ||--o{ ShareLink : creates
+  User ||--o{ Notification : receives
   Study ||--o{ ProcessingJob : has
   Study ||--o{ AuditEvent : emits
   Study ||--o{ ShareLink : shares
+  Study ||--o{ Notification : notifies
   User {
     uuid id PK
     string email
@@ -73,6 +78,8 @@ erDiagram
     text hashed_password
     string role
     bool is_active
+    bool notify_on_processing_completed
+    bool notify_on_processing_failed
     datetime created_at
     datetime updated_at
     datetime last_login_at
@@ -139,6 +146,19 @@ erDiagram
     datetime last_accessed_at
     int access_count
   }
+  Notification {
+    uuid id PK
+    uuid recipient_user_id FK
+    uuid study_id FK
+    string event_type
+    string title
+    text message
+    datetime created_at
+    datetime read_at
+    string email_status
+    datetime email_sent_at
+    text email_error
+  }
 ```
 
 ## Arquitectura Multiusuario
@@ -150,8 +170,10 @@ Reglas implementadas:
 - `admin` puede ver todos los estudios y crear usuarios.
 - `admin` puede consultar el dashboard operativo global con cola, jobs, uso de disco, healthchecks, usuarios y estudios por estado.
 - `researcher` puede subir estudios, ver historial propio y descargar resultados propios.
-- `admin` y propietario pueden crear/revocar links temporales para compartir solo el PDF técnico de estudios completados.
+- `admin` y propietario pueden crear/revocar enlaces temporales para compartir solo el PDF técnico de estudios completados.
 - Los receptores externos descargan por token opaco sin cuenta, sin acceso a ZIP, logs, detalle ni enumeración de estudios.
+- El propietario recibe notificaciones internas al completar o fallar un procesamiento; los admins activos reciben aviso interno ante fallos.
+- Los correos electrónicos usan Mailpit local por defecto en Docker Compose (`noreply@neuroimagen.com`) o un SMTP real por configuración; nunca adjuntan PDF, ZIP ni logs.
 - Los usuarios iniciales se crean por admin; no hay registro público abierto.
 - El usuario admin inicial se crea con `make create-admin EMAIL=...`.
 - El flujo de procesamiento sigue aislado detrás de `processor_adapter`; autenticación y permisos pertenecen a la capa API.

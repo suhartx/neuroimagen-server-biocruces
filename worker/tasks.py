@@ -10,6 +10,7 @@ from app.db.session import SessionLocal
 from app.models.processing_job import ProcessingJob
 from app.models.study import Study, StudyStatus
 from app.services.audit import record_event
+from app.services.notifications import notify_processing_finished
 from app.services.storage import LocalStudyStorage
 from processor_adapter import create_processor_adapter
 from processor_adapter.nifti_renderer import render_nifti_outputs
@@ -192,6 +193,7 @@ def process_study(self, study_id: str, job_id: str) -> None:
             )
 
         db.commit()
+        _notify_processing_finished(db, study, settings)
     except Exception as exc:
         db.rollback()
         logger.exception("Unexpected worker error for study %s", study_id)
@@ -206,6 +208,8 @@ def process_study(self, study_id: str, job_id: str) -> None:
             job.finished_at = datetime.utcnow()
             job.error_message = str(exc)
         db.commit()
+        if study:
+            _notify_processing_finished(db, study, settings)
     finally:
         db.close()
 
@@ -218,3 +222,12 @@ def _relative_paths(paths: list[Path], base_dir: Path) -> list[Path]:
         except ValueError:
             relative_paths.append(Path(path.name))
     return relative_paths
+
+
+def _notify_processing_finished(db, study: Study, settings) -> None:
+    try:
+        notify_processing_finished(db, study, settings)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Notification dispatch failed for study %s", study.id)

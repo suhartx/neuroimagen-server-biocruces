@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import get_settings
 from app.db.base import Base
+from app.models.notification import Notification
 from app.models.processing_job import ProcessingJob
 from app.models.study import Study, StudyStatus
 from app.models.user import User, UserRole
@@ -75,6 +76,10 @@ def test_worker_marks_study_failed_when_script_fails(tmp_path, monkeypatch):
     assert study.status == StudyStatus.failed
     assert job.status == StudyStatus.failed.value
     assert study.error_message == "El procesador externo terminó con error"
+    notification = db.query(Notification).one()
+    assert notification.recipient_user_id == owner_id
+    assert notification.event_type == "processing_failed"
+    assert notification.email_status == "disabled"
     db.close()
     get_settings.cache_clear()
 

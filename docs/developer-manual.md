@@ -74,7 +74,7 @@ Crear el primer admin:
 make create-admin EMAIL=admin@example.org
 ```
 
-La gestión básica de jobs incluye logs truncados, cancelación de jobs en cola, retry de fallidos y borrado seguro. El dashboard admin ya muestra estado global de cola, jobs, almacenamiento, servicios, usuarios y estudios por estado. Backup y restore local ya está disponible por CLI. La compartición segura de informes PDF ya está disponible mediante links temporales revocables. La siguiente fase recomendada es notificaciones.
+La gestión básica de trabajos incluye logs truncados, cancelación de trabajos en cola, reintento de fallidos y borrado seguro. El dashboard admin ya muestra estado global de cola, trabajos, almacenamiento, servicios, usuarios y estudios por estado. Backup y restore local, compartición segura de informes PDF y notificaciones ya están disponibles. La siguiente fase recomendada es subida múltiple y lotes.
 
 Permisos mínimos esperados:
 
@@ -87,17 +87,17 @@ Fuera de la implementación actual:
 - Google/OIDC.
 - ORCID.
 - Rol `viewer` completo.
-- Compartición de ZIP mediante links.
-- Email.
+- Compartición de ZIP mediante enlaces.
+- Correo electrónico institucional avanzado.
 - Retención automática.
-- Multiple upload.
-- Cancelación de jobs en ejecución.
+- Subida múltiple.
+- Cancelación de trabajos en ejecución.
 - 2FA.
 - Cuotas.
 
 ## Cómo Hacer Cambios
 
-Usá esta tabla antes de modificar el sistema. La idea es cambiar lo mínimo correcto y dejar código, tests y docs alineados.
+Usa esta tabla antes de modificar el sistema. La idea es cambiar lo mínimo correcto y dejar código, tests y docs alineados.
 
 | Cambio | Revisar | Validar |
 | --- | --- | --- |

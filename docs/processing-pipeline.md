@@ -13,6 +13,7 @@ sequenceDiagram
   participant P as Processor Adapter
   participant S as Script externo
   participant FS as Filesystem
+  participant N as Notificaciones/SMTP
   U->>F: Selecciona T1w .nii.gz y sujeto BIDS
   F->>A: POST /api/studies/upload
   A->>FS: Guarda input/original
@@ -29,7 +30,9 @@ sequenceDiagram
   W->>FS: Renderiza NIfTI con FSL slicer
   W->>FS: Genera PDF tecnico y ZIP si aplica
   W->>D: completed o failed
+  W->>N: Registra aviso interno y correo opcional
   F->>A: Consulta estudios
+  F->>A: Consulta notificaciones
   F->>A: Descarga PDF tecnico / ZIP
 ```
 
@@ -122,3 +125,15 @@ Después de una ejecución correcta de `compneuro`, el worker busca `.nii` y `.n
 El PDF se guarda por defecto en `output/reports/technical_report.pdf` e incluye metadatos del estudio, sujeto BIDS, flujo de procesamiento usado, listado de resultados, nombre de cada NIfTI y la imagen PNG renderizada. Si no hay NIfTI o falla alguna conversión, el PDF se genera igualmente con avisos técnicos. Estos avisos no son trazas internas y pueden mostrarse en la GUI.
 
 El documento es un informe técnico de artefactos generados. No interpreta imágenes ni constituye un informe médico validado.
+
+## Notificaciones De Cierre
+
+Cuando el worker confirma `completed` o `failed`, primero guarda el estado final del estudio/job y después crea notificaciones. Este orden evita que un error de SMTP afecte al resultado principal del procesamiento.
+
+Reglas actuales:
+
+- `completed`: notificación interna al propietario y correo electrónico si lo permite su preferencia.
+- `failed`: notificación interna al propietario y a admins activos; correo electrónico si lo permiten sus preferencias.
+- Los correos electrónicos no adjuntan PDF, ZIP, logs ni datos pesados; solo texto y enlace a la plataforma configurado con `APP_PUBLIC_BASE_URL`.
+- En Docker Compose, el SMTP por defecto es Mailpit (`mailpit:1025`) con remitente `noreply@neuroimagen.com`; la bandeja local está en `http://localhost:8025`.
+- Si SMTP falla, se registra `email_status=failed` y `email_error` en la notificación, pero el estudio mantiene su estado real.

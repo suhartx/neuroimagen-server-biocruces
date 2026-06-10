@@ -4,9 +4,9 @@ Este roadmap ordena la evolución funcional de la plataforma desde el estado act
 
 ## Estado Del Proyecto
 
-La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos, descarga de resultados según permisos, gestión básica de jobs, dashboard operativo para admin, backup/restore local por CLI y compartición temporal de PDFs técnicos.
+La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos, descarga de resultados según permisos, gestión básica de jobs, dashboard operativo para admin, backup/restore local por CLI, compartición temporal de PDF técnicos y notificaciones internas/correo electrónico.
 
-Todavía no existen notificaciones, retención automática, cuotas, flujos seleccionables desde GUI ni revisión clínica formal.
+Todavía no existen retención automática, cuotas, flujos seleccionables desde GUI ni revisión clínica formal.
 
 ## Roadmap de evolución funcional
 
@@ -175,7 +175,7 @@ Estado: implementada para descarga de PDF técnico mediante token temporal opaco
 
 Alcance recomendado:
 
-- Links temporales opacos.
+- Enlaces temporales opacos.
 - Caducidad configurable.
 - Revocación.
 - Auditoría de acceso.
@@ -191,13 +191,13 @@ Dependencias:
 Riesgos:
 
 - Tokens demasiado largos de vida.
-- Links no revocables.
+- Enlaces no revocables.
 - Compartición de ZIP con más datos de los necesarios.
 
 Criterios de aceptación:
 
-- El propietario o admin puede crear y revocar links.
-- Los links caducan.
+- El propietario o admin puede crear y revocar enlaces.
+- Los enlaces caducan.
 - Cada descarga queda auditada.
 - El endpoint por token no permite enumerar estudios.
 
@@ -205,10 +205,12 @@ Criterios de aceptación:
 
 Objetivo: avisar de finalización o fallo sin adjuntar datos pesados.
 
-Alcance recomendado:
+Estado: implementada con notificaciones internas, preferencias por usuario y SMTP configurable; Docker Compose usa Mailpit local por defecto.
+
+Alcance implementado:
 
 - SMTP configurable.
-- Email al completar o fallar.
+- Correo electrónico al completar o fallar.
 - Solo enlaces; sin adjuntar PDF, ZIP ni datos pesados.
 - Preferencias de notificación.
 - Notificación a admin en errores críticos.
@@ -216,8 +218,8 @@ Alcance recomendado:
 
 Dependencias:
 
-- Fase 1 para email institucional de usuario.
-- Fase 5 si los emails enlazan a recursos compartidos temporales.
+- Fase 1 para correo electrónico institucional de usuario.
+- Fase 5 si los correos enlazan a recursos compartidos temporales.
 
 Criterios de aceptación:
 
@@ -369,34 +371,34 @@ Criterios de aceptación:
 
 ## Priorización Recomendada
 
-La próxima fase óptima es **Fase 6 — Notificaciones**.
+La próxima fase óptima es **Fase 7 — Subida Múltiple Y Lotes**.
 
 Justificación:
 
 - La Fase 1 ya establece identidad, roles, propietario por estudio e historial básico.
-- La Fase 2 ya añade detalle de job, logs truncados, cancelación de jobs en cola, retry y borrado seguro.
+- La Fase 2 ya añade detalle de trabajo, logs truncados, cancelación de trabajos en cola, reintento y borrado seguro.
 - La Fase 3 ya aporta visibilidad operativa global para admin.
-- Backup y restore local ya están cubiertos como operación CLI antes de avanzar a sharing, notificaciones o integración institucional.
-- La Fase 5 ya permite compartir PDFs técnicos con links temporales, revocables y auditados.
+- Backup y restore local ya están cubiertos como operación CLI antes de avanzar a lotes, retención o integración institucional.
+- La Fase 5 ya permite compartir PDF técnicos con enlaces temporales, revocables y auditados.
 
 Orden óptimo de implementación tras cerrar este roadmap:
 
-1. Fase 6: notificaciones.
-2. Fase 7: subida múltiple y lotes.
-3. Fase 8: retención, cuotas y almacenamiento.
-4. Fase 9: flujos configurables.
-5. Fase 10: integración institucional.
-6. Fase 11: revisión clínica.
+1. Fase 7: subida múltiple y lotes.
+2. Fase 8: retención, cuotas y almacenamiento.
+3. Fase 9: flujos configurables.
+4. Fase 10: integración institucional.
+5. Fase 11: revisión clínica.
 
 ## Histórico Implementado
 
-Las fases 1, 2, 3, 4 y 5 ya están implementadas como base funcional y operativa:
+Las fases 1, 2, 3, 4, 5 y 6 ya están implementadas como base funcional y operativa:
 
 - Fase 1: login local, roles `admin`/`researcher`, propietario por estudio, creación de usuarios por admin y permisos por endpoint.
-- Fase 2: detalle de jobs, logs truncados, cancelación de jobs en cola, retry de fallidos, soft delete, borrado físico controlado y auditoría mínima.
-- Fase 3: dashboard admin con cola, jobs activos/fallidos, uso de disco, healthchecks, usuarios, estudios por estado y alertas no bloqueantes.
+- Fase 2: detalle de trabajos, logs truncados, cancelación de trabajos en cola, reintento de fallidos, soft delete, borrado físico controlado y auditoría mínima.
+- Fase 3: dashboard admin con cola, trabajos activos/fallidos, uso de disco, healthchecks, usuarios, estudios por estado y alertas no bloqueantes.
 - Fase 4: backup/restore local por CLI de PostgreSQL y `data/studies`, con confirmación fuerte para restore y smoke test posterior.
-- Fase 5: links temporales y revocables para descargar PDFs técnicos sin cuenta completa, con hash de token y auditoría de accesos.
+- Fase 5: enlaces temporales y revocables para descargar PDF técnicos sin cuenta completa, con hash de token y auditoría de accesos.
+- Fase 6: notificaciones internas, preferencias por usuario y correo electrónico SMTP configurable.
 
 Los detalles técnicos vivos están en `docs/architecture.md`, `docs/api.md`, `docs/developer-manual.md` y los tests.
 
@@ -405,12 +407,12 @@ Los detalles técnicos vivos están en `docs/architecture.md`, `docs/api.md`, `d
 - Google login.
 - ORCID login.
 - Rol `viewer` completo.
-- Compartición de ZIP por link.
-- Email.
+- Compartición de ZIP por enlace.
+- Correo electrónico institucional avanzado.
 - Retención automática.
-- Multiple upload.
+- Subida múltiple.
 - Pipeline manager avanzado.
-- Cancelación de running jobs.
+- Cancelación de trabajos en ejecución.
 - 2FA.
 - Cuotas.
 - Anonimización DICOM real.

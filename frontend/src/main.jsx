@@ -15,6 +15,8 @@ function App() {
   const [studies, setStudies] = useState([]);
   const [users, setUsers] = useState([]);
   const [adminDashboard, setAdminDashboard] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationPrefs, setNotificationPrefs] = useState({ notify_on_processing_completed: true, notify_on_processing_failed: true });
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [selectedLogs, setSelectedLogs] = useState(null);
   const [shareStudy, setShareStudy] = useState(null);
@@ -33,7 +35,7 @@ function App() {
     });
     if (response.status === 401) {
       handleLocalLogout();
-      setMessage('La sesión expiró. Volvé a iniciar sesión.');
+      setMessage('La sesión ha expirado. Vuelve a iniciar sesión.');
     }
     return response;
   }
@@ -71,10 +73,28 @@ function App() {
     }
   }
 
+  async function loadNotifications() {
+    if (!token) return;
+    const response = await authFetch(`${API_BASE}/notifications`);
+    if (response.ok) {
+      setNotifications(await response.json());
+    }
+  }
+
+  async function loadNotificationPreferences() {
+    if (!token) return;
+    const response = await authFetch(`${API_BASE}/me/notification-preferences`);
+    if (response.ok) {
+      setNotificationPrefs(await response.json());
+    }
+  }
+
   useEffect(() => {
     if (!token) return undefined;
     loadCurrentUser();
     loadStudies();
+    loadNotifications();
+    loadNotificationPreferences();
     const timer = window.setInterval(loadStudies, 5000);
     return () => window.clearInterval(timer);
   }, [token]);
@@ -89,6 +109,12 @@ function App() {
     const timer = window.setInterval(loadAdminDashboard, 10000);
     return () => window.clearInterval(timer);
   }, [user, token]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const timer = window.setInterval(loadNotifications, 15000);
+    return () => window.clearInterval(timer);
+  }, [token]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -126,6 +152,8 @@ function App() {
     setStudies([]);
     setUsers([]);
     setAdminDashboard(null);
+    setNotifications([]);
+    setNotificationPrefs({ notify_on_processing_completed: true, notify_on_processing_failed: true });
     setShareStudy(null);
     setShareLinks([]);
     setGeneratedShareUrl('');
@@ -162,6 +190,7 @@ function App() {
     setMessage(payload.message || 'Estudio encolado.');
     await loadStudies();
     await loadAdminDashboard();
+    await loadNotifications();
   }
 
   async function handleCreateUser(event) {
@@ -183,6 +212,34 @@ function App() {
     setMessage(`Usuario creado: ${payload.email}`);
     await loadUsers();
     await loadAdminDashboard();
+  }
+
+  async function markNotificationRead(notification) {
+    const response = await authFetch(`${API_BASE}/notifications/${notification.id}/read`, { method: 'POST' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo marcar la notificación.');
+      return;
+    }
+    setNotifications(notifications.map((item) => (item.id === payload.id ? payload : item)));
+  }
+
+  async function updateNotificationPreference(name, checked) {
+    const nextPrefs = { ...notificationPrefs, [name]: checked };
+    setNotificationPrefs(nextPrefs);
+    const response = await authFetch(`${API_BASE}/me/notification-preferences`, {
+      method: 'PATCH',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify(nextPrefs),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudieron guardar las preferencias.');
+      await loadNotificationPreferences();
+      return;
+    }
+    setNotificationPrefs(payload);
+    setMessage('Preferencias de notificación guardadas.');
   }
 
   async function downloadArtifact(study, type) {
@@ -218,7 +275,7 @@ function App() {
     const response = await authFetch(`${API_BASE}/studies/${study.id}/share-links`);
     const payload = await response.json().catch(() => ([]));
     if (!response.ok) {
-      setMessage(payload.detail || 'No se pudieron cargar los links compartidos.');
+      setMessage(payload.detail || 'No se pudieron cargar los enlaces compartidos.');
       return;
     }
     setShareLinks(payload);
@@ -229,41 +286,41 @@ function App() {
     const response = await authFetch(`${API_BASE}/studies/${shareStudy.id}/share-links`, { method: 'POST' });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setMessage(payload.detail || 'No se pudo crear el link compartido.');
+      setMessage(payload.detail || 'No se pudo crear el enlace compartido.');
       return;
     }
     setGeneratedShareUrl(payload.url);
     setShareLinks([payload, ...shareLinks]);
-    setMessage('Link temporal creado. Copialo y compartilo solo con destinatarios autorizados.');
+    setMessage('Enlace temporal creado. Cópialo y compártelo solo con destinatarios autorizados.');
   }
 
   async function revokeShareLink(link) {
     if (!shareStudy) return;
-    if (!window.confirm('¿Seguro que querés revocar este link?')) return;
+    if (!window.confirm('¿Seguro que quieres revocar este enlace?')) return;
     const response = await authFetch(`${API_BASE}/studies/${shareStudy.id}/share-links/${link.id}/revoke`, { method: 'POST' });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setMessage(payload.detail || 'No se pudo revocar el link.');
+      setMessage(payload.detail || 'No se pudo revocar el enlace.');
       return;
     }
     setShareLinks(shareLinks.map((item) => (item.id === payload.id ? payload : item)));
-    setMessage('Link revocado.');
+    setMessage('Enlace revocado.');
   }
 
   async function copyShareUrl() {
     if (!generatedShareUrl) return;
     try {
       await navigator.clipboard.writeText(generatedShareUrl);
-      setMessage('Link copiado al portapapeles.');
+      setMessage('Enlace copiado al portapapeles.');
     } catch {
       const input = document.querySelector('.share-url input');
       input?.focus();
       input?.select();
       if (document.execCommand?.('copy')) {
-        setMessage('Link copiado al portapapeles.');
+        setMessage('Enlace copiado al portapapeles.');
         return;
       }
-      setMessage('No se pudo copiar automáticamente; el link quedó seleccionado. Usá Ctrl+C.');
+      setMessage('No se pudo copiar automáticamente; el enlace quedó seleccionado. Usa Ctrl+C.');
     }
   }
 
@@ -284,7 +341,7 @@ function App() {
       retry: 'reintentar este estudio',
       delete: 'borrar este estudio y sus ficheros',
     };
-    if (!window.confirm(`¿Seguro que querés ${labels[action]}?`)) return;
+    if (!window.confirm(`¿Seguro que quieres ${labels[action]}?`)) return;
     const response = await authFetch(`${API_BASE}/studies/${study.id}${action === 'delete' ? '' : `/${action}`}`, {
       method: action === 'delete' ? 'DELETE' : 'POST',
     });
@@ -356,6 +413,35 @@ function App() {
             {message && <p className="message">{message}</p>}
           </section>
 
+          <section className="card notifications-card">
+            <div className="section-title">
+              <div>
+                <h2>Notificaciones</h2>
+                <p className="hint">Avisos internos de finalización o fallo. Los correos electrónicos no adjuntan PDF ni ZIP.</p>
+              </div>
+              <button className="secondary" onClick={loadNotifications}>Actualizar</button>
+            </div>
+            <div className="notification-preferences">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={notificationPrefs.notify_on_processing_completed}
+                  onChange={(event) => updateNotificationPreference('notify_on_processing_completed', event.target.checked)}
+                />
+                Recibir correo cuando un estudio se complete
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={notificationPrefs.notify_on_processing_failed}
+                  onChange={(event) => updateNotificationPreference('notify_on_processing_failed', event.target.checked)}
+                />
+                Recibir correo cuando un estudio falle
+              </label>
+            </div>
+            <NotificationList notifications={notifications} onRead={markNotificationRead} />
+          </section>
+
           {user.role === 'admin' && adminDashboard && (
             <section className="card admin-dashboard">
               <div className="section-title">
@@ -408,7 +494,7 @@ function App() {
               </div>
 
               <p className="hint">
-                Última actualización: {new Date(adminDashboard.generated_at).toLocaleString('es-ES')}. Disco libre: {formatBytes(adminDashboard.storage.disk_free_bytes)}.
+                Última actualización: {formatDate(adminDashboard.generated_at)}. Disco libre: {formatBytes(adminDashboard.storage.disk_free_bytes)}.
               </p>
             </section>
           )}
@@ -436,14 +522,14 @@ function App() {
                       <td>{study.original_filename}</td>
                       <td>{study.bids_subject_id || <span className="muted">No aplica</span>}</td>
                       <td><Status value={study.status} error={study.error_message} warnings={study.processing_warnings} /></td>
-                      <td>{new Date(study.created_at).toLocaleString('es-ES')}</td>
+                      <td>{formatDate(study.created_at)}</td>
                       <td>
                         {study.has_pdf ? (
                           <button className="download" onClick={() => downloadArtifact(study, 'pdf')}>PDF</button>
                         ) : (
                           <span className="muted">PDF no disponible</span>
                         )}
-                        {study.has_output_zip && <button className="download secondary-download" onClick={() => downloadArtifact(study, 'zip')}>ZIP outputs</button>}
+                        {study.has_output_zip && <button className="download secondary-download" onClick={() => downloadArtifact(study, 'zip')}>ZIP de resultados</button>}
                       </td>
                       <td className="actions-cell">
                         <button className="secondary compact" onClick={() => loadStudyDetail(study)}>Detalle</button>
@@ -497,8 +583,8 @@ function App() {
                         <td>{job.status}</td>
                         <td>{job.retry_count}</td>
                         <td>{job.worker_name || <span className="muted">No asignado</span>}</td>
-                        <td>{job.started_at ? new Date(job.started_at).toLocaleString('es-ES') : <span className="muted">Pendiente</span>}</td>
-                        <td>{job.finished_at ? new Date(job.finished_at).toLocaleString('es-ES') : <span className="muted">Pendiente</span>}</td>
+                        <td>{job.started_at ? formatDate(job.started_at) : <span className="muted">Pendiente</span>}</td>
+                        <td>{job.finished_at ? formatDate(job.finished_at) : <span className="muted">Pendiente</span>}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -512,12 +598,12 @@ function App() {
               <div className="section-title">
                 <div>
                   <h2>Compartir informe</h2>
-                  <p className="hint">Crea un link temporal para descargar solo el PDF técnico de <strong>{shareStudy.original_filename}</strong>.</p>
+                  <p className="hint">Crea un enlace temporal para descargar solo el PDF técnico de <strong>{shareStudy.original_filename}</strong>.</p>
                 </div>
                 <button className="secondary" onClick={() => setShareStudy(null)}>Cerrar</button>
               </div>
               <div className="share-actions">
-                <button onClick={createShareLink}>Crear link temporal</button>
+                <button onClick={createShareLink}>Crear enlace temporal</button>
                 {generatedShareUrl && (
                   <div className="share-url">
                     <input type="url" value={generatedShareUrl} readOnly onFocus={(event) => event.target.select()} />
@@ -553,7 +639,7 @@ function App() {
                       </tr>
                     ))}
                     {shareLinks.length === 0 && (
-                      <tr><td colSpan="5" className="muted">No hay links compartidos para este estudio.</td></tr>
+                      <tr><td colSpan="5" className="muted">No hay enlaces compartidos para este estudio.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -597,7 +683,7 @@ function App() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Email</th>
+                      <th>Correo</th>
                       <th>Nombre</th>
                       <th>Rol</th>
                       <th>Activo</th>
@@ -636,6 +722,30 @@ function Status({ value, error, warnings }) {
     <span className={`status ${value}`} title={error || warnings || ''}>
       {labels[value] || value}{error ? `: ${error}` : ''}{!error && warnings ? ' con avisos' : ''}
     </span>
+  );
+}
+
+function NotificationList({ notifications, onRead }) {
+  const unread = notifications.filter((notification) => !notification.read_at).length;
+  return (
+    <div className="notification-list">
+      <p className="hint">{unread ? `${unread} notificación(es) sin leer.` : 'No tienes notificaciones pendientes.'}</p>
+      {notifications.map((notification) => (
+        <article key={notification.id} className={`notification-item ${notification.read_at ? 'read' : 'unread'}`}>
+          <div>
+            <strong>{notification.title}</strong>
+            <p>{notification.message}</p>
+            <span className="muted">
+              {formatDate(notification.created_at)} · Correo: {emailStatusLabel(notification.email_status)}
+            </span>
+          </div>
+          {!notification.read_at && (
+            <button className="secondary compact" onClick={() => onRead(notification)}>Marcar leída</button>
+          )}
+        </article>
+      ))}
+      {notifications.length === 0 && <p className="muted">Todavía no hay notificaciones.</p>}
+    </div>
   );
 }
 
@@ -693,13 +803,25 @@ function formatBytes(bytes) {
 }
 
 function formatDate(value) {
-  return value ? new Date(value).toLocaleString('es-ES') : 'No informado';
+  if (!value) return 'No informado';
+  const normalizedValue = /[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}Z`;
+  return new Date(normalizedValue).toLocaleString('es-ES');
 }
 
 function shareLinkStatus(link) {
   if (link.is_revoked) return 'Revocado';
   if (link.is_expired) return 'Caducado';
   return 'Activo';
+}
+
+function emailStatusLabel(status) {
+  const labels = {
+    disabled: 'desactivado',
+    pending: 'pendiente',
+    sent: 'enviado',
+    failed: 'fallido',
+  };
+  return labels[status] || status;
 }
 
 createRoot(document.getElementById('root')).render(<App />);

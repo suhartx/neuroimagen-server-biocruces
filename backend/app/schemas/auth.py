@@ -11,6 +11,8 @@ class UserRead(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    notify_on_processing_completed: bool
+    notify_on_processing_failed: bool
 
     model_config = {"from_attributes": True}
 
@@ -32,6 +34,11 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, max_length=256)
     role: str = "researcher"
     is_active: bool = True
+
+
+class NotificationPreferences(BaseModel):
+    notify_on_processing_completed: bool
+    notify_on_processing_failed: bool
 
 
 class LogoutResponse(BaseModel):

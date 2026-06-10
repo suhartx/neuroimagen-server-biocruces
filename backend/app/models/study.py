@@ -66,4 +66,7 @@ class Study(Base):
     share_links = relationship(
         "ShareLink", back_populates="study", cascade="all, delete-orphan"
     )
+    notifications = relationship(
+        "Notification", back_populates="study", cascade="all, delete-orphan"
+    )
     owner = relationship("User", back_populates="studies")
