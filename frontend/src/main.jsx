@@ -337,7 +337,9 @@ function App() {
 
   async function runStudyAction(study, action) {
     const labels = {
-      cancel: 'cancelar este job en cola',
+      cancel: study.status === 'processing'
+        ? 'cancelar este procesamiento en ejecución'
+        : 'cancelar este job en cola',
       retry: 'reintentar este estudio',
       delete: 'borrar este estudio y sus ficheros',
     };
@@ -535,7 +537,9 @@ function App() {
                         <button className="secondary compact" onClick={() => loadStudyDetail(study)}>Detalle</button>
                         <button className="secondary compact" onClick={() => loadStudyLogs(study)}>Logs</button>
                         {study.has_pdf && study.status === 'completed' && <button className="secondary compact" onClick={() => openSharePanel(study)}>Compartir</button>}
-                        {study.status === 'queued' && <button className="secondary compact" onClick={() => runStudyAction(study, 'cancel')}>Cancelar</button>}
+                        {['queued', 'processing'].includes(study.status) && (
+                          <button className="secondary compact" onClick={() => runStudyAction(study, 'cancel')}>Cancelar</button>
+                        )}
                         {study.status === 'failed' && <button className="secondary compact" onClick={() => runStudyAction(study, 'retry')}>Reintentar</button>}
                         {study.status !== 'processing' && <button className="danger compact" onClick={() => runStudyAction(study, 'delete')}>Borrar</button>}
                       </td>
@@ -805,7 +809,7 @@ function formatBytes(bytes) {
 function formatDate(value) {
   if (!value) return 'No informado';
   const normalizedValue = /[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}Z`;
-  return new Date(normalizedValue).toLocaleString('es-ES');
+  return new Date(normalizedValue).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
 }
 
 function shareLinkStatus(link) {

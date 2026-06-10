@@ -77,7 +77,7 @@ Cuando se modifica el frontend y se usa el despliegue Docker/Nginx, ejecuta `mak
 9. El procesador dummy genera un PDF de desarrollo o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
 10. El worker detecta resultados, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
 11. El worker registra notificaciones internas y, si SMTP está configurado, envía correos electrónicos sin adjuntos al completar o fallar.
-12. La GUI permite ver detalle/logs, cancelar jobs en cola, reintentar fallidos, borrar estudios permitidos y descargar PDF/ZIP si el usuario tiene permiso.
+12. La GUI permite ver detalle/logs, cancelar jobs en cola o en procesamiento, reintentar fallidos, borrar estudios permitidos y descargar PDF/ZIP si el usuario tiene permiso.
 
 ## Notificaciones
 
