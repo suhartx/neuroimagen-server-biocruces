@@ -336,14 +336,14 @@ function App() {
   }
 
   async function runStudyAction(study, action) {
-    const labels = {
+    const confirmations = {
       cancel: study.status === 'processing'
-        ? 'cancelar este procesamiento en ejecución'
-        : 'cancelar este job en cola',
-      retry: 'reintentar este estudio',
-      delete: 'borrar este estudio y sus ficheros',
+        ? '¿Seguro que quieres solicitar la cancelación de este procesamiento en ejecución?'
+        : '¿Seguro que quieres cancelar este job en cola? El estudio quedará en el historial como cancelado.',
+      retry: '¿Seguro que quieres reintentar este estudio?',
+      delete: '¿Seguro que quieres borrar este estudio y sus ficheros? Esta acción no se puede deshacer.',
     };
-    if (!window.confirm(`¿Seguro que quieres ${labels[action]}?`)) return;
+    if (!window.confirm(confirmations[action])) return;
     const response = await authFetch(`${API_BASE}/studies/${study.id}${action === 'delete' ? '' : `/${action}`}`, {
       method: action === 'delete' ? 'DELETE' : 'POST',
     });
@@ -457,11 +457,17 @@ function App() {
               <div className="metric-grid">
                 <MetricCard label="En cola" value={adminDashboard.queue.queued} />
                 <MetricCard label="Procesando" value={adminDashboard.queue.processing} />
+                <MetricCard label="Capacidad" value={`${adminDashboard.queue.processing_capacity || 0} simultáneos`} />
                 <MetricCard label="Fallidos" value={adminDashboard.queue.failed} tone={adminDashboard.queue.failed ? 'danger' : ''} />
+                <MetricCard label="Workers activos" value={adminDashboard.queue.worker_replicas || 0} />
                 <MetricCard label="Usuarios activos" value={`${adminDashboard.users.active}/${adminDashboard.users.total}`} />
                 <MetricCard label="Estudios" value={sumValues(adminDashboard.studies_by_status)} />
                 <MetricCard label="Subidas registradas" value={formatBytes(adminDashboard.storage.studies_bytes)} />
               </div>
+
+              <p className="hint">
+                Disponibles ahora: {adminDashboard.queue.processing_available || 0}. Concurrencia interna por worker: {adminDashboard.queue.worker_concurrency || 0}.
+              </p>
 
               <div className="dashboard-columns">
                 <div>
@@ -541,7 +547,7 @@ function App() {
                           <button className="secondary compact" onClick={() => runStudyAction(study, 'cancel')}>Cancelar</button>
                         )}
                         {study.status === 'failed' && <button className="secondary compact" onClick={() => runStudyAction(study, 'retry')}>Reintentar</button>}
-                        {study.status !== 'processing' && <button className="danger compact" onClick={() => runStudyAction(study, 'delete')}>Borrar</button>}
+                        {!['queued', 'processing'].includes(study.status) && <button className="danger compact" onClick={() => runStudyAction(study, 'delete')}>Borrar</button>}
                       </td>
                     </tr>
                   ))}

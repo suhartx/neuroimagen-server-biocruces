@@ -1,13 +1,23 @@
 .PHONY: up down logs test lint format migrate seed clean smoke check-docs check-secrets frontend-rebuild rebuild create-admin backup restore
 
+WORKER_REPLICAS ?=
+
 up:
-	docker compose up -d
+	worker_replicas="$(WORKER_REPLICAS)"; \
+	if [ -z "$$worker_replicas" ] && [ -f .env ]; then \
+		worker_replicas="$$(awk -F= '/^[[:space:]]*WORKER_REPLICAS[[:space:]]*=/{value=$$0; sub(/^[^=]*=/, "", value); gsub(/^[[:space:]]+|[[:space:]]+$$/, "", value); print value; exit}' .env)"; \
+	fi; \
+	docker compose up -d --scale worker=$${worker_replicas:-1}
 
 frontend-rebuild:
 	docker compose up -d --build --force-recreate frontend
 
 rebuild:
-	docker compose up -d --build --force-recreate
+	worker_replicas="$(WORKER_REPLICAS)"; \
+	if [ -z "$$worker_replicas" ] && [ -f .env ]; then \
+		worker_replicas="$$(awk -F= '/^[[:space:]]*WORKER_REPLICAS[[:space:]]*=/{value=$$0; sub(/^[^=]*=/, "", value); gsub(/^[[:space:]]+|[[:space:]]+$$/, "", value); print value; exit}' .env)"; \
+	fi; \
+	docker compose up -d --build --force-recreate --scale worker=$${worker_replicas:-1}
 
 down:
 	docker compose down

@@ -232,4 +232,5 @@ Para reemplazar el procesador, no hace falta modificar FastAPI ni la GUI si se m
 - Celery ejecuta el procesamiento largo fuera del ciclo HTTP para evitar bloqueos y permitir trazabilidad de estados.
 - `processor_adapter` mantiene al procesador externo como componente aislado y evita acoplar FastAPI al flujo de procesamiento de neuroimagen concreto.
 - El post-procesado técnico se ejecuta en el mismo worker porque FSL ya está disponible y se evitan contenedores, volúmenes y sincronización adicionales.
+- La concurrencia segura con `compneuro` se consigue escalando réplicas del servicio `worker`; cada contenedor mantiene `MAX_CONCURRENT_PROCESSING_JOBS=1` para no compartir su `/project` interno entre procesos simultáneos.
 - El PDF generado es técnico y no contiene interpretación de imagen ni conclusiones médicas.

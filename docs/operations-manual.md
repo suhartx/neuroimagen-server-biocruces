@@ -10,7 +10,8 @@
 - `make backup`: crear backup local de PostgreSQL y `data/studies`.
 - `make restore BACKUP_DIR=backups/<timestamp> CONFIRM_RESTORE=YES_I_UNDERSTAND`: restaurar backup local.
 - `make frontend-rebuild`: reconstruir y recrear solo el frontend Docker.
-- `make rebuild`: reconstruir y recrear todos los servicios Docker.
+- `make up WORKER_REPLICAS=2`: levantar servicios con dos contenedores `worker`.
+- `make rebuild`: reconstruir y recrear todos los servicios Docker; acepta `WORKER_REPLICAS=N`.
 - `make clean`: limpiar volúmenes y estudios locales.
 
 ## Usuarios
@@ -57,12 +58,19 @@ Redis no se respalda en esta fase: la cola Celery se considera estado transitori
 La GUI muestra un dashboard operativo solo para `admin` con:
 
 - estado de cola y jobs fallidos.
+- capacidad de procesamiento simultáneo detectada desde Celery.
 - healthchecks de PostgreSQL, Redis y Worker.
 - uso de disco y bytes registrados en estudios.
 - usuarios y estudios por estado.
 - alertas básicas que no bloquean el procesamiento.
 
 Si Redis o Worker aparecen en `warning` o `down`, revisar `docker compose ps` y `make logs` antes de relanzar trabajos.
+
+En la GUI, `Cancelar` y `Borrar` son acciones distintas. Un estudio en cola debe cancelarse primero para conservar trazabilidad del intento; el borrado elimina después el estudio y sus ficheros. Por eso la acción `Borrar` no se muestra mientras el estudio está `queued` o `processing`.
+
+Para `compneuro`, no aumentes `MAX_CONCURRENT_PROCESSING_JOBS` por encima de `1`. Si necesitás más paralelismo, usá más réplicas con `WORKER_REPLICAS=2` en `.env` o `make up WORKER_REPLICAS=2`. El dashboard admin muestra workers activos, capacidad total y slots disponibles.
+
+Para preparar una configuración nueva de compneuro, partir de `.env.compneuro.example`: está comentado variable por variable y separa base de datos, cola, procesador, concurrencia, artefactos, API y SMTP. No pegar credenciales reales en archivos versionados.
 
 ## Mantenimiento
 

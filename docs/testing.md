@@ -65,6 +65,7 @@ La ejecución real de `compneuro-anatproc` con `sub-O01_T1w.nii.gz` no forma par
 PROCESSOR_BACKEND=compneuro
 WORKER_DOCKERFILE=worker/Dockerfile.compneuro
 ALLOWED_EXTENSIONS=.nii.gz
+WORKER_REPLICAS=2
 MAX_CONCURRENT_PROCESSING_JOBS=1
 ```
 

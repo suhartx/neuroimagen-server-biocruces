@@ -42,8 +42,13 @@ PROCESSOR_NAME=compneuro-anatproc
 PROCESSOR_VERSION=1.1
 WORKER_DOCKERFILE=worker/Dockerfile.compneuro
 ALLOWED_EXTENSIONS=.nii.gz
+WORKER_REPLICAS=2
 MAX_CONCURRENT_PROCESSING_JOBS=1
 ```
+
+`MAX_CONCURRENT_PROCESSING_JOBS` debe quedar en `1` para `compneuro`, porque cada contenedor worker gestiona una ruta interna `/project`. Para aumentar paralelismo, escalá contenedores worker con `WORKER_REPLICAS=2` en `.env`, `make up WORKER_REPLICAS=2` o `make rebuild WORKER_REPLICAS=2`. La capacidad simultánea esperada es el número de réplicas activas.
+
+La plantilla `.env.compneuro.example` está comentada variable por variable. Usala como checklist de despliegue: copiar a `.env`, revisar secretos, confirmar rutas/comandos compneuro y después levantar con `make up`.
 
 `api` y `worker` deben compartir `./data:/app/data`, porque la API prepara BIDS y el worker escribe `output/Preproc`, logs, PDF técnico y ZIP.
 
