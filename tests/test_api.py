@@ -611,8 +611,14 @@ def test_admin_dashboard_returns_operational_summary(client, monkeypatch):
     )
     monkeypatch.setattr(
         routes,
-        "_worker_health",
-        lambda: AdminServiceHealth(name="Worker", status="ok"),
+        "_inspect_worker_stats",
+        lambda: (
+            {
+                "celery@worker-1": {"pool": {"max-concurrency": 1}},
+                "celery@worker-2": {"pool": {"max-concurrency": 1}},
+            },
+            None,
+        ),
     )
     researcher_headers, _ = auth_headers(
         client, "researcher@example.org", "secret-pass"
@@ -650,6 +656,10 @@ def test_admin_dashboard_returns_operational_summary(client, monkeypatch):
     assert payload["queue"]["queued"] == 1
     assert payload["queue"]["failed"] == 1
     assert payload["queue"]["active"] == 1
+    assert payload["queue"]["worker_replicas"] == 2
+    assert payload["queue"]["worker_concurrency"] == 1
+    assert payload["queue"]["processing_capacity"] == 2
+    assert payload["queue"]["processing_available"] == 2
     assert payload["studies_by_status"]["queued"] == 1
     assert payload["studies_by_status"]["failed"] == 1
     assert payload["users"]["admins"] == 1

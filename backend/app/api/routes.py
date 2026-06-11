@@ -5,6 +5,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 from uuid import UUID, uuid4
 
 import redis
@@ -98,12 +99,18 @@ def admin_dashboard(
 ) -> AdminDashboardRead:
     studies_by_status = _count_by(db, Study.status, Study.deleted_at.is_(None))
     jobs_by_status = _count_by(db, ProcessingJob.status)
+    worker_stats, worker_error = _inspect_worker_stats()
+    worker_capacity = _worker_capacity(settings, worker_stats)
     queue = AdminQueueSummary(
         queued=jobs_by_status.get(StudyStatus.queued.value, 0),
         processing=jobs_by_status.get(StudyStatus.processing.value, 0),
         failed=jobs_by_status.get(StudyStatus.failed.value, 0),
+        worker_replicas=worker_capacity["worker_replicas"],
+        worker_concurrency=worker_capacity["worker_concurrency"],
+        processing_capacity=worker_capacity["processing_capacity"],
     )
     queue.active = queue.queued + queue.processing
+    queue.processing_available = max(0, queue.processing_capacity - queue.processing)
     users = _user_summary(db)
     studies_bytes = db.scalar(
         select(func.coalesce(func.sum(Study.file_size), 0)).where(
@@ -111,7 +118,7 @@ def admin_dashboard(
         )
     )
     storage = _storage_summary(settings.storage_root, int(studies_bytes or 0))
-    services = _service_health(db, settings)
+    services = _service_health(db, settings, worker_stats, worker_error)
     recent_failed_jobs = db.scalars(
         select(ProcessingJob)
         .where(ProcessingJob.status == StudyStatus.failed.value)
@@ -1077,11 +1084,16 @@ def _storage_summary(root: Path, studies_bytes: int) -> AdminStorageSummary:
     )
 
 
-def _service_health(db: Session, settings: Settings) -> list[AdminServiceHealth]:
+def _service_health(
+    db: Session,
+    settings: Settings,
+    worker_stats: dict[str, Any] | None,
+    worker_error: str | None,
+) -> list[AdminServiceHealth]:
     return [
         _database_health(db),
         _redis_health(settings),
-        _worker_health(),
+        _worker_health(worker_stats, worker_error),
     ]
 
 
@@ -1109,20 +1121,57 @@ def _redis_health(settings: Settings) -> AdminServiceHealth:
     return AdminServiceHealth(name="Redis", status="ok")
 
 
-def _worker_health() -> AdminServiceHealth:
+def _inspect_worker_stats() -> tuple[dict[str, Any] | None, str | None]:
     try:
         from worker.celery_app import celery_app
 
-        responses = celery_app.control.inspect(timeout=0.5).ping()
+        return celery_app.control.inspect(timeout=2.0).stats() or {}, None
     except Exception as exc:
-        return AdminServiceHealth(name="Worker", status="down", detail=str(exc))
-    if not responses:
+        return None, str(exc)
+
+
+def _worker_health(
+    worker_stats: dict[str, Any] | None,
+    worker_error: str | None,
+) -> AdminServiceHealth:
+    if worker_error:
+        return AdminServiceHealth(name="Worker", status="down", detail=worker_error)
+    if not worker_stats:
         return AdminServiceHealth(
             name="Worker", status="warning", detail="Sin respuesta de workers Celery"
         )
     return AdminServiceHealth(
-        name="Worker", status="ok", detail=f"{len(responses)} worker(s)"
+        name="Worker", status="ok", detail=f"{len(worker_stats)} worker(s)"
     )
+
+
+def _worker_capacity(
+    settings: Settings,
+    worker_stats: dict[str, Any] | None,
+) -> dict[str, int]:
+    fallback_concurrency = max(1, settings.max_concurrent_processing_jobs)
+    if not worker_stats:
+        return {
+            "worker_replicas": 0,
+            "worker_concurrency": fallback_concurrency,
+            "processing_capacity": 0,
+        }
+
+    worker_replicas = len(worker_stats)
+    capacities = []
+    for stats in worker_stats.values():
+        pool = stats.get("pool") or {}
+        raw_capacity = pool.get("max-concurrency") or pool.get("max_concurrency")
+        try:
+            capacities.append(max(1, int(raw_capacity)))
+        except (TypeError, ValueError):
+            capacities.append(fallback_concurrency)
+
+    return {
+        "worker_replicas": worker_replicas,
+        "worker_concurrency": max(capacities) if capacities else fallback_concurrency,
+        "processing_capacity": sum(capacities),
+    }
 
 
 def _dashboard_alerts(

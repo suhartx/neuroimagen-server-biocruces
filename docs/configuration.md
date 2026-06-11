@@ -27,12 +27,13 @@ El fichero `.env` no debe commitearse. Puede contener contraseñas, rutas locale
 | `PROCESSOR_BACKEND` | Backend activo: `dummy` o `compneuro`. | `dummy` |
 | `PROCESSOR_COMMAND` | Plantilla de comando usada por el backend `dummy`. | Dummy de desarrollo |
 | `WORKER_DOCKERFILE` | Dockerfile usado para construir el worker. | `backend/Dockerfile` |
+| `WORKER_REPLICAS` | Réplicas del servicio `worker` usadas por `make up`/`make rebuild`. Puede definirse en `.env` o pasarse al comando. | `1` |
 | `COMPNEURO_CONTAINER_IMAGE` | Imagen base documentada para trazabilidad de compneuro. | `compneurobilbaolab/compneuro-anatproc:1.1` |
 | `COMPNEURO_ANATPROC_REF` | Commit del repo externo usado al construir el worker compneuro. | `a2f3e7c9523ed521c3f85f7dffde5ee8fb400842` |
 | `COMPNEURO_PROJECT_MOUNT` | Ruta que el procesador externo ve como proyecto. | `/project` |
 | `COMPNEURO_COMMAND` | Comando ejecutado por el adapter compneuro. | `bash /app/src/apreproc_launcher.sh` |
 | `PROCESSING_TIMEOUT_SECONDS` | Timeout del procesador; `0` lo desactiva. | `0` |
-| `MAX_CONCURRENT_PROCESSING_JOBS` | Concurrencia del worker. Para compneuro se recomienda `1`. | `1` |
+| `MAX_CONCURRENT_PROCESSING_JOBS` | Concurrencia interna de cada worker. Para compneuro debe mantenerse en `1`. | `1` |
 | `GENERATE_OUTPUT_ZIP` | Generar ZIP de resultados `Preproc`. | `true` |
 | `GENERATE_TECHNICAL_PDF` | Generar PDF técnico de procesamiento. | `true` |
 | `GENERATE_RENDERED_PNG` | Renderizar resultados NIfTI a PNG tras `compneuro`. | `true` |
@@ -121,6 +122,7 @@ PROCESSOR_NAME=compneuro-anatproc
 PROCESSOR_VERSION=1.1
 WORKER_DOCKERFILE=worker/Dockerfile.compneuro
 ALLOWED_EXTENSIONS=.nii.gz
+WORKER_REPLICAS=2
 MAX_CONCURRENT_PROCESSING_JOBS=1
 GENERATE_OUTPUT_ZIP=true
 GENERATE_TECHNICAL_PDF=true
@@ -128,7 +130,26 @@ GENERATE_RENDERED_PNG=true
 NIFTI_RENDERER=slicer
 ```
 
+Para correr más de un procesamiento `compneuro` a la vez, escalá réplicas del servicio `worker` en lugar de subir la concurrencia interna del contenedor. Ejemplo: `WORKER_REPLICAS=2` en `.env` o `make up WORKER_REPLICAS=2` permite dos procesamientos simultáneos si hay recursos suficientes. La capacidad efectiva se muestra en el dashboard admin.
+
 En este modo el comando principal es `COMPNEURO_COMMAND`, por defecto `bash /app/src/apreproc_launcher.sh`. El worker se construye sobre `compneurobilbaolab/compneuro-anatproc:1.1`, por lo que ejecuta el launcher y FSL `slicer` dentro del mismo contenedor worker.
+
+## Plantilla `.env.compneuro.example`
+
+`.env.compneuro.example` es la referencia comentada para preparar un `.env` real con `PROCESSOR_BACKEND=compneuro`. Cada variable incluye un comentario inmediato con su propósito para que la configuración sea revisable antes de levantar servicios.
+
+Bloques principales:
+
+- Entorno y PostgreSQL: `ENVIRONMENT`, `POSTGRES_*`, `DATABASE_URL`.
+- Cola Celery/Redis: `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`.
+- Almacenamiento y subida: `STORAGE_ROOT`, `ALLOWED_EXTENSIONS`, `MAX_UPLOAD_SIZE_MB`.
+- Procesador compneuro: `PROCESSOR_*`, `WORKER_DOCKERFILE`, `COMPNEURO_*`.
+- Concurrencia: `WORKER_REPLICAS` define cuántos contenedores worker se levantan; `MAX_CONCURRENT_PROCESSING_JOBS` define procesos internos por contenedor y debe quedar en `1` para compneuro.
+- Artefactos técnicos: `GENERATE_*`, `NIFTI_*`, `TECHNICAL_REPORT_FILENAME`.
+- API y seguridad: `CORS_ORIGINS`, `AUTH_*`, `APP_PUBLIC_BASE_URL`.
+- Notificaciones SMTP: `NOTIFICATIONS_EMAIL_ENABLED`, `SMTP_*`.
+
+Antes de copiarla a `.env`, revisar especialmente `POSTGRES_PASSWORD`, `AUTH_SECRET_KEY`, `APP_PUBLIC_BASE_URL`, `SMTP_USERNAME`, `SMTP_PASSWORD` y `SMTP_FROM_EMAIL`. Los ejemplos versionados no deben contener credenciales reales.
 
 `COMPNEURO_COMMAND` es el punto configurable para cambiar de script manteniendo el backend `compneuro`. Si el nuevo procesador requiere otras dependencias, el cambio debe acompañarse con otro `WORKER_DOCKERFILE` o con una imagen base distinta. El contenedor resultante sigue siendo el servicio `worker`: debe tener Celery, las dependencias Python de la plataforma, acceso a `/app/data` y el comando configurado disponible dentro del contenedor.
 
@@ -170,3 +191,5 @@ No hace falta modificar la GUI ni los endpoints de FastAPI si el nuevo procesado
 ## Relación Con Docker Compose
 
 `docker-compose.yml` lee estas variables y aplica valores por defecto si no están definidas. En desarrollo local suele bastar con crear `.env` desde `.env.example`; en despliegues reales hay que revisar contraseñas, rutas, CORS y comando del procesador antes de levantar servicios.
+
+`WORKER_REPLICAS` no se inyecta dentro de los contenedores. `make up` y `make rebuild` leen esa clave desde `.env` si existe, o desde el parámetro de línea de comandos si se pasa explícitamente. Ejemplo: `make up WORKER_REPLICAS=2` ejecuta `docker compose up -d --scale worker=2`.

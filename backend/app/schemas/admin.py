@@ -12,6 +12,10 @@ class AdminQueueSummary(BaseModel):
     processing: int = 0
     failed: int = 0
     active: int = 0
+    worker_replicas: int = 0
+    worker_concurrency: int = 0
+    processing_capacity: int = 0
+    processing_available: int = 0
 
 
 class AdminUserSummary(BaseModel):

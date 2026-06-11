@@ -45,7 +45,7 @@ Abre `http://localhost` para la GUI y `http://localhost/api/docs` para Swagger/O
 ## Comandos Principales
 
 ```bash
-make up       # levantar servicios
+make up       # levantar servicios; WORKER_REPLICAS=N escala workers
 make down     # parar servicios
 make logs     # ver logs
 make frontend-rebuild # reconstruir/recrear solo el frontend Docker
@@ -61,6 +61,9 @@ make seed     # crear fichero de prueba local
 make smoke    # comprobar healthcheck vía proxy
 make clean    # borrar volúmenes y estudios locales
 ```
+
+Para permitir más procesamientos simultáneos en `compneuro`, mantené `MAX_CONCURRENT_PROCESSING_JOBS=1` y escalá contenedores worker, por ejemplo `make up WORKER_REPLICAS=2`.
+También podés dejar `WORKER_REPLICAS=2` en `.env`; `make up` lo toma automáticamente si no se pasa por comando.
 
 Cuando se modifica el frontend y se usa el despliegue Docker/Nginx, ejecuta `make frontend-rebuild` para regenerar el bundle estático y recrear el contenedor. `make down && make up` puede reutilizar una imagen anterior; `make clean` solo debe usarse si quieres borrar volúmenes y estudios locales.
 
