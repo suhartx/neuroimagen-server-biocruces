@@ -289,8 +289,10 @@ def create_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Rol no válido"
         )
+    email = normalize_email(payload.email)
+    _release_deleted_user_email(db, email)
     user = User(
-        email=normalize_email(payload.email),
+        email=email,
         full_name=payload.full_name.strip(),
         hashed_password=hash_password(payload.password),
         role=payload.role,
@@ -374,14 +376,16 @@ def delete_user(
         )
     if user.role == UserRole.admin.value:
         _ensure_another_active_admin(db, user.id)
+    original_email = user.email
     user.is_active = False
     user.deleted_at = datetime.utcnow()
+    user.email = _deleted_user_email(user.email, user.id)
     record_event(
         db,
         "user_deleted",
         actor=current_user.email,
         actor_user_id=current_user.id,
-        details={"user_id": str(user.id), "email": user.email},
+        details={"user_id": str(user.id), "email": original_email},
     )
     db.commit()
     return UserActionResponse(id=user.id, message="Usuario borrado")
@@ -1226,6 +1230,22 @@ def _user_read(db: Session, user: User) -> UserRead:
     return UserRead.model_validate(user).model_copy(
         update={"storage_used_bytes": _user_storage_used(db, user.id)}
     )
+
+
+def _release_deleted_user_email(db: Session, email: str) -> None:
+    deleted_user = db.scalar(
+        select(User).where(User.email == email, User.deleted_at.is_not(None))
+    )
+    if deleted_user:
+        deleted_user.email = _deleted_user_email(deleted_user.email, deleted_user.id)
+        db.flush()
+
+
+def _deleted_user_email(email: str, user_id: UUID) -> str:
+    local, separator, domain = email.partition("@")
+    if not separator:
+        return f"deleted-{user_id}-{email}"
+    return f"{local}+deleted-{user_id}@{domain}"
 
 
 def _storage_summary(root: Path, studies_bytes: int) -> AdminStorageSummary:

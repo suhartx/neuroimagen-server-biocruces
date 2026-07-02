@@ -213,7 +213,7 @@ function App() {
     const responsePayload = await response.json().catch(() => ({}));
     setLoading(false);
     if (!response.ok) {
-      setMessage(responsePayload.detail || 'No se pudo crear el usuario.');
+      setMessage(formatApiError(responsePayload, 'No se pudo crear el usuario.'));
       return;
     }
     setNewUser({ email: '', full_name: '', password: '', role: 'researcher', storage_quota_mb: '' });
@@ -891,6 +891,16 @@ function emailStatusLabel(status) {
     failed: 'fallido',
   };
   return labels[status] || status;
+}
+
+function formatApiError(payload, fallback) {
+  const detail = payload?.detail;
+  if (!detail) return fallback;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item?.msg || String(item)).join(' ');
+  }
+  return detail.msg || fallback;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
