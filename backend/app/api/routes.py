@@ -179,7 +179,7 @@ def login(
     db.commit()
     return TokenResponse(
         access_token=create_access_token(user, settings),
-        user=UserRead.model_validate(user),
+        user=_user_read(db, user),
     )
 
 
@@ -201,8 +201,10 @@ def logout(
 
 
 @router.get("/auth/me", response_model=UserRead)
-def current_user(current_user: User = Depends(get_current_user)) -> UserRead:
-    return UserRead.model_validate(current_user)
+def current_user(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> UserRead:
+    return _user_read(db, current_user)
 
 
 @router.get("/me/notification-preferences", response_model=NotificationPreferences)
@@ -590,14 +592,10 @@ def update_clinical_review_status(
     request: Request,
     study_id: UUID,
     payload: ClinicalReviewUpdate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StudyRead:
-    study = db.get(Study, study_id)
-    if not study or study.deleted_at:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
-        )
+    study = _get_visible_study(db, study_id, current_user)
     allowed_statuses = {item.value for item in ClinicalReviewStatus}
     if payload.clinical_review_status not in allowed_statuses:
         raise HTTPException(

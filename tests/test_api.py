@@ -584,7 +584,29 @@ def test_upload_rejects_user_storage_quota_exceeded(client):
     assert client.get("/api/studies", headers=headers).json() == []
 
 
-def test_admin_can_update_study_clinical_review_status(client):
+def test_auth_me_includes_user_storage_quota_usage(client):
+    headers, user_id = auth_headers(client, "researcher@example.org", "secret-pass")
+
+    db = client.app.state.testing_session_local()
+    user = db.get(User, user_id)
+    user.storage_quota_bytes = 1024
+    db.commit()
+    db.close()
+
+    upload = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+    current = client.get("/api/auth/me", headers=headers)
+
+    assert upload.status_code == 201
+    assert current.status_code == 200
+    assert current.json()["storage_quota_bytes"] == 1024
+    assert current.json()["storage_used_bytes"] == len(b"dummy image")
+
+
+def test_admin_and_owner_can_update_study_clinical_review_status(client):
     researcher_headers, _ = auth_headers(
         client, "researcher@example.org", "secret-pass"
     )
@@ -604,6 +626,11 @@ def test_admin_can_update_study_clinical_review_status(client):
         json={"clinical_review_status": "reviewed"},
         headers=admin_headers,
     )
+    owner_updated = client.patch(
+        f"/api/studies/{study_id}/clinical-review",
+        json={"clinical_review_status": "validated"},
+        headers=researcher_headers,
+    )
     invalid = client.patch(
         f"/api/studies/{study_id}/clinical-review",
         json={"clinical_review_status": "clinical_report"},
@@ -612,7 +639,29 @@ def test_admin_can_update_study_clinical_review_status(client):
 
     assert updated.status_code == 200
     assert updated.json()["clinical_review_status"] == "reviewed"
+    assert owner_updated.status_code == 200
+    assert owner_updated.json()["clinical_review_status"] == "validated"
     assert invalid.status_code == 400
+
+
+def test_researcher_cannot_update_other_user_clinical_review_status(client):
+    owner_headers, _ = auth_headers(client, "owner@example.org", "secret-pass")
+    other_headers, _ = auth_headers(client, "other@example.org", "secret-pass")
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=owner_headers,
+    )
+    study_id = response.json()["id"]
+    complete_study_with_pdf(client, study_id)
+
+    update = client.patch(
+        f"/api/studies/{study_id}/clinical-review",
+        json={"clinical_review_status": "reviewed"},
+        headers=other_headers,
+    )
+
+    assert update.status_code == 404
 
 
 def test_user_can_update_notification_preferences(client):
