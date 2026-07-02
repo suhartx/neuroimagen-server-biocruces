@@ -27,11 +27,18 @@ Tests actuales:
 - detalle de estudio con jobs.
 - logs truncados.
 - cancelación de jobs en cola.
+- cancelación de jobs en procesamiento con terminación de tarea Celery.
 - retry de jobs fallidos.
 - soft delete y borrado físico de carpeta de estudio.
 - bloqueo de borrado para estudios en procesamiento.
 - dashboard admin con resumen operativo.
 - bloqueo de dashboard admin para `researcher`.
+- enlaces compartidos de PDF con creación, revocación, caducidad y auditoría.
+- cuotas de almacenamiento por usuario.
+- preferencias de notificación, listado y marcado de notificaciones propias.
+- revisión técnica `technical_only`/`reviewed`/`validated` según permisos.
+- worker ante cancelación de procesador en ejecución.
+- SMTP con STARTTLS antes de autenticación.
 
 Ejecutar:
 

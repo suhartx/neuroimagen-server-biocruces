@@ -12,10 +12,11 @@ Esta carpeta contiene la API HTTP del sistema. Está implementada con FastAPI y 
 - Guardar entradas en `data/studies/{study_id}/input`.
 - Crear registros `Study`, `ProcessingJob` y `AuditEvent`.
 - Encolar el procesamiento asíncrono.
-- Descargar el PDF cuando el worker lo haya generado.
-- Crear usuarios desde admin y permitir la creación del admin inicial por CLI.
-- Exponer detalle de jobs, logs truncados, cancelación de jobs en cola, retry de fallidos y borrado seguro.
+- Descargar PDF/ZIP cuando el worker los haya generado.
+- Crear usuarios desde admin, editar cuotas, borrar usuarios lógicamente y permitir la creación del admin inicial por CLI.
+- Exponer detalle de jobs, logs truncados, cancelación de jobs en cola o en procesamiento, retry de fallidos y borrado seguro.
 - Exponer dashboard admin con métricas agregadas, healthchecks y alertas básicas.
+- Gestionar enlaces temporales de descarga PDF, preferencias/notificaciones y revisión técnica de resultados.
 
 ## Estructura Del Código
 
@@ -39,6 +40,8 @@ Esta carpeta contiene la API HTTP del sistema. Está implementada con FastAPI y 
 - `Study`: representa el estudio subido, sus rutas, estado y metadatos técnicos.
 - `ProcessingJob`: representa una ejecución concreta del procesamiento asíncrono.
 - `AuditEvent`: registra eventos relevantes para trazabilidad.
+- `ShareLink`: representa enlaces temporales revocables para descargar solo PDF técnicos.
+- `Notification`: registra avisos internos y estado de envío de correo.
 
 ## Flujo De Subida
 
@@ -54,7 +57,7 @@ Esta carpeta contiene la API HTTP del sistema. Está implementada con FastAPI y 
 
 - `GET /api/studies/{study_id}/detail`: estudio y jobs asociados.
 - `GET /api/studies/{study_id}/logs`: `processor.log` y `rendering.log` truncados.
-- `POST /api/studies/{study_id}/cancel`: cancela solo jobs en cola.
+- `POST /api/studies/{study_id}/cancel`: cancela jobs en cola o solicita terminación de jobs en procesamiento.
 - `POST /api/studies/{study_id}/retry`: reencola estudios fallidos.
 - `DELETE /api/studies/{study_id}`: soft delete y borrado físico si no está procesando.
 

@@ -18,14 +18,15 @@ Si el estado aparece como completado con avisos, el procesamiento principal term
 
 ## Gestión De Estudios
 
-Desde la tabla de estudios se puede:
+Desde la tabla de estudios se puede, según rol y estado del estudio:
 
 - Ver detalle técnico del estudio y sus trabajos.
 - Ver logs truncados si existen.
-- Cancelar estudios que siguen en cola.
+- Cancelar estudios en cola o solicitar cancelación si ya están procesando, cuando la acción está disponible en la GUI.
 - Reintentar estudios fallidos.
 - Borrar estudios que no están procesando.
 - Compartir el PDF técnico de estudios completados mediante enlaces temporales.
+- Marcar resultados como `Solo técnico`, o como `Revisado`/`Validado` cuando están completados, para trazabilidad interna.
 
 El borrado elimina físicamente los ficheros asociados y deja auditoría mínima en base de datos.
 
@@ -37,8 +38,8 @@ Los enlaces caducan automáticamente y pueden revocarse desde la misma pantalla.
 
 ## Usuarios Y Roles
 
-- `researcher`: puede subir estudios, ver su historial propio y descargar resultados propios.
-- `admin`: puede ver todos los estudios, crear usuarios y consultar el dashboard operativo desde la GUI.
+- `researcher`: puede subir estudios desde la GUI, ver su historial propio, consultar su cuota, descargar resultados propios, gestionar enlaces PDF de sus estudios y marcar revisión técnica de sus resultados.
+- `admin`: puede ver todos los estudios, crear/desactivar usuarios, definir cuotas, consultar el dashboard operativo, borrar estudios permitidos, gestionar enlaces PDF y marcar revisión técnica. El panel admin no expone subida, cancelación/retry ni ejecución de pipelines.
 
 No hay registro público abierto. Los usuarios se crean desde una cuenta admin.
 
@@ -50,7 +51,7 @@ Para crear el primer admin, usar:
 make create-admin EMAIL=admin@example.org
 ```
 
-Después, el admin puede crear usuarios `researcher` o `admin` desde la GUI.
+Después, el admin puede crear usuarios `researcher` o `admin` desde la GUI, asignar cuotas de almacenamiento y desactivar/borrar usuarios de forma lógica.
 
 El dashboard admin muestra cola, jobs fallidos, servicios, uso de disco, usuarios y estudios por estado. Sirve para diagnóstico operativo; no sustituye la revisión de logs si un procesamiento falla.
 

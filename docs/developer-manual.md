@@ -74,7 +74,7 @@ Crear el primer admin:
 make create-admin EMAIL=admin@example.org
 ```
 
-La gestión básica de trabajos incluye logs truncados, cancelación de trabajos en cola, reintento de fallidos y borrado seguro. El dashboard admin ya muestra estado global de cola, trabajos, almacenamiento, servicios, usuarios y estudios por estado. Backup y restore local, compartición segura de informes PDF y notificaciones ya están disponibles. La siguiente fase recomendada es subida múltiple y lotes.
+La gestión básica de trabajos incluye logs truncados, cancelación de trabajos en cola o en ejecución, reintento de fallidos y borrado seguro. El dashboard admin ya muestra estado global de cola, trabajos, almacenamiento, servicios, usuarios y estudios por estado. Backup y restore local, compartición segura de informes PDF, notificaciones, cuotas por usuario y revisión técnica de resultados ya están disponibles. La siguiente fase recomendada es subida múltiple y lotes.
 
 Permisos mínimos esperados:
 
@@ -91,9 +91,8 @@ Fuera de la implementación actual:
 - Correo electrónico institucional avanzado.
 - Retención automática.
 - Subida múltiple.
-- Cancelación de trabajos en ejecución.
 - 2FA.
-- Cuotas.
+- Revisión clínica formal con revisor, fecha, comentarios y criterios externos validados.
 
 ## Cómo Hacer Cambios
 

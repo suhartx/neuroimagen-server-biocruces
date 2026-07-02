@@ -18,7 +18,7 @@
 - Protección de endpoints de estudios y descargas.
 - Auditoría de login, upload y download con usuario actor cuando aplica.
 - Logs visibles en GUI con truncado.
-- Cancelación de jobs en cola, retry de fallidos y borrado controlado con auditoría mínima.
+- Cancelación de jobs en cola o en procesamiento, retry de fallidos y borrado controlado con auditoría mínima.
 - Dashboard admin protegido por rol.
 - Enlaces temporales revocables para compartir solo PDF técnicos, con token opaco hasheado y auditoría de descarga.
 
