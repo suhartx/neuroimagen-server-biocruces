@@ -196,6 +196,10 @@ function App() {
 
   async function handleCreateUser(event) {
     event.preventDefault();
+    if (newUser.password.length < 8) {
+      setMessage('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
     setLoading(true);
     setMessage('Creando usuario...');
     const payload = {
@@ -722,7 +726,7 @@ function App() {
               <form onSubmit={handleCreateUser}>
                 <input type="email" value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} placeholder="email@institucion.org" required />
                 <input type="text" value={newUser.full_name} onChange={(event) => setNewUser({ ...newUser, full_name: event.target.value })} placeholder="Nombre completo" required />
-                <input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} placeholder="Contraseña inicial" required />
+                <input type="password" minLength="8" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} placeholder="Contraseña inicial (mínimo 8 caracteres)" required />
                 <select value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
                   <option value="researcher">researcher</option>
                   <option value="admin">admin</option>
@@ -730,6 +734,7 @@ function App() {
                 <input type="number" min="0" value={newUser.storage_quota_mb} onChange={(event) => setNewUser({ ...newUser, storage_quota_mb: event.target.value })} placeholder="Cuota MB" aria-label="Cuota de almacenamiento en MB" />
                 <button disabled={loading}>Crear usuario</button>
               </form>
+              <p className="hint">La contraseña inicial debe tener al menos 8 caracteres.</p>
               <div className="table-wrap small-table">
                 <table>
                   <thead>
