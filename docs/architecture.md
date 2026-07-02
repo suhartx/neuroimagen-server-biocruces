@@ -172,8 +172,8 @@ Reglas implementadas:
 
 - `admin` puede ver todos los estudios, crear usuarios, borrar usuarios lógicamente y definir cuotas de almacenamiento por usuario.
 - `admin` puede consultar un dashboard administrativo centrado en usuarios, estudios y almacenamiento; el panel no expone acciones para ejecutar pipelines.
-- `admin` puede marcar salidas como `technical_only`, `reviewed` o `validated`. El valor inicial es `technical_only` porque el PDF no es un informe clínico.
-- `researcher` puede subir estudios, ver historial propio y descargar resultados propios.
+- `admin` puede marcar salidas como `technical_only`, `reviewed` o `validated` en cualquier estudio visible. El valor inicial es `technical_only` porque el PDF no es un informe clínico.
+- `researcher` puede subir estudios, ver historial propio, consultar su cuota, descargar resultados propios y marcar sus salidas como `technical_only`, `reviewed` o `validated`.
 - `admin` y propietario pueden crear/revocar enlaces temporales para compartir solo el PDF técnico de estudios completados.
 - Los receptores externos descargan por token opaco sin cuenta, sin acceso a ZIP, logs, detalle ni enumeración de estudios.
 - El propietario recibe notificaciones internas al completar o fallar un procesamiento; los admins activos reciben aviso interno ante fallos.

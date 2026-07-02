@@ -189,6 +189,7 @@ function App() {
     setSubjectId('');
     setMessage(payload.message || 'Estudio encolado.');
     await loadStudies();
+    await loadCurrentUser();
     await loadAdminDashboard();
     await loadNotifications();
   }
@@ -397,6 +398,7 @@ function App() {
     setShareLinks([]);
     setGeneratedShareUrl('');
     await loadStudies();
+    await loadCurrentUser();
     await loadAdminDashboard();
   }
 
@@ -458,6 +460,9 @@ function App() {
             <h2>Subir estudio</h2>
             <p className="hint">
               Se espera una imagen anatómica T1w en formato <strong>.nii.gz</strong>. Indica un identificador BIDS como <code>sub-O01</code>; si lo dejas vacío, el sistema generará uno seguro.
+            </p>
+            <p className="hint">
+              Almacenamiento: <strong>{formatBytes(user.storage_used_bytes)}</strong> usado de <strong>{formatQuota(user.storage_quota_bytes)}</strong>.
             </p>
             <form onSubmit={handleSubmit}>
               <input type="file" accept=".nii.gz" onChange={(event) => setFile(event.target.files?.[0] || null)} />
@@ -555,15 +560,11 @@ function App() {
                       <td><Status value={study.status} error={study.error_message} warnings={study.processing_warnings} /></td>
                       <td>{formatDate(study.created_at)}</td>
                       <td>
-                        {user.role === 'admin' ? (
-                          <select value={study.clinical_review_status || 'technical_only'} onChange={(event) => updateClinicalReview(study, event.target.value)}>
-                            <option value="technical_only">Solo técnico</option>
-                            <option value="reviewed">Revisado</option>
-                            <option value="validated">Validado</option>
-                          </select>
-                        ) : (
-                          clinicalReviewLabel(study.clinical_review_status)
-                        )}
+                        <select value={study.clinical_review_status || 'technical_only'} onChange={(event) => updateClinicalReview(study, event.target.value)}>
+                          <option value="technical_only">Solo técnico</option>
+                          <option value="reviewed" disabled={study.status !== 'completed'}>Revisado</option>
+                          <option value="validated" disabled={study.status !== 'completed'}>Validado</option>
+                        </select>
                       </td>
                       <td>
                         {study.has_pdf ? (
