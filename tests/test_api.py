@@ -550,8 +550,62 @@ def test_admin_can_update_user_quota_and_delete_user_logically(client):
     event = db.query(AuditEvent).filter(AuditEvent.event_type == "user_deleted").one()
     assert user.deleted_at is not None
     assert user.is_active is False
+    assert user.email.startswith("researcher+deleted-")
     assert event.actor == "admin@example.org"
     db.close()
+
+
+def test_admin_can_create_clean_user_after_logical_delete(client):
+    admin_headers, _ = auth_headers(
+        client, "admin@example.org", "secret-pass", role=UserRole.admin.value
+    )
+    old_user_id = create_test_user(client, "researcher@example.org", "secret-pass")
+
+    deleted = client.delete(f"/api/users/{old_user_id}", headers=admin_headers)
+    recreated = client.post(
+        "/api/users",
+        json={
+            "email": "researcher@example.org",
+            "full_name": "Nuevo Usuario",
+            "password": "new-secret",
+            "role": "researcher",
+        },
+        headers=admin_headers,
+    )
+
+    assert deleted.status_code == 200
+    assert recreated.status_code == 201
+    assert recreated.json()["email"] == "researcher@example.org"
+    assert recreated.json()["id"] != str(old_user_id)
+
+    db = client.app.state.testing_session_local()
+    old_user = db.get(User, old_user_id)
+    new_user = db.get(User, UUID(recreated.json()["id"]))
+    assert old_user.deleted_at is not None
+    assert old_user.email != "researcher@example.org"
+    assert new_user.deleted_at is None
+    assert new_user.email == "researcher@example.org"
+    db.close()
+
+
+def test_create_user_validation_error_returns_structured_detail(client):
+    admin_headers, _ = auth_headers(
+        client, "admin@example.org", "secret-pass", role=UserRole.admin.value
+    )
+
+    response = client.post(
+        "/api/users",
+        json={
+            "email": "froga@froga.eus",
+            "full_name": "Froga",
+            "password": "short",
+            "role": "researcher",
+        },
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 422
+    assert isinstance(response.json()["detail"], list)
 
 
 def test_admin_cannot_delete_own_user(client):
