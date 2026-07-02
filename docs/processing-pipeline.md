@@ -128,7 +128,7 @@ Después de una ejecución correcta de `compneuro`, el worker busca `.nii` y `.n
 
 El PDF se guarda por defecto en `output/reports/technical_report.pdf` e incluye metadatos del estudio, sujeto BIDS, flujo de procesamiento usado, listado de resultados, nombre de cada NIfTI y la imagen PNG renderizada. Si no hay NIfTI o falla alguna conversión, el PDF se genera igualmente con avisos técnicos. Estos avisos no son trazas internas y pueden mostrarse en la GUI.
 
-El documento es un informe técnico de artefactos generados. No interpreta imágenes ni constituye un informe médico validado.
+El documento es un informe técnico de artefactos generados. No interpreta imágenes ni constituye un informe médico validado. Por defecto, cada estudio queda marcado como `technical_only`; administración puede cambiar la marca a `reviewed` o `validated` solo como trazabilidad interna de revisión.
 
 ## Notificaciones De Cierre
 

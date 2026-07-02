@@ -81,6 +81,7 @@ def test_upload_creates_owned_study_and_audit_event(client):
     assert studies[0]["original_filename"] == "study.nii"
     assert studies[0]["owner_user_id"] == str(user_id)
     assert studies[0]["has_output_zip"] is False
+    assert studies[0]["clinical_review_status"] == "technical_only"
 
     db = client.app.state.testing_session_local()
     event = db.query(AuditEvent).filter(AuditEvent.event_type == "study_uploaded").one()
@@ -512,6 +513,7 @@ def test_admin_can_create_researcher_user(client):
             "full_name": "Nuevo Usuario",
             "password": "new-secret",
             "role": "researcher",
+            "storage_quota_bytes": 2048,
         },
         headers=admin_headers,
     )
@@ -519,6 +521,98 @@ def test_admin_can_create_researcher_user(client):
     assert response.status_code == 201
     assert response.json()["email"] == "new@example.org"
     assert response.json()["role"] == "researcher"
+    assert response.json()["storage_quota_bytes"] == 2048
+
+
+def test_admin_can_update_user_quota_and_delete_user_logically(client):
+    admin_headers, _ = auth_headers(
+        client, "admin@example.org", "secret-pass", role=UserRole.admin.value
+    )
+    user_id = create_test_user(client, "researcher@example.org", "secret-pass")
+
+    updated = client.patch(
+        f"/api/users/{user_id}",
+        json={"storage_quota_bytes": 1024, "is_active": False},
+        headers=admin_headers,
+    )
+    deleted = client.delete(f"/api/users/{user_id}", headers=admin_headers)
+    listed = client.get("/api/users", headers=admin_headers)
+
+    assert updated.status_code == 200
+    assert updated.json()["storage_quota_bytes"] == 1024
+    assert updated.json()["is_active"] is False
+    assert deleted.status_code == 200
+    assert deleted.json()["message"] == "Usuario borrado"
+    assert all(item["id"] != str(user_id) for item in listed.json())
+
+    db = client.app.state.testing_session_local()
+    user = db.get(User, user_id)
+    event = db.query(AuditEvent).filter(AuditEvent.event_type == "user_deleted").one()
+    assert user.deleted_at is not None
+    assert user.is_active is False
+    assert event.actor == "admin@example.org"
+    db.close()
+
+
+def test_admin_cannot_delete_own_user(client):
+    admin_headers, admin_id = auth_headers(
+        client, "admin@example.org", "secret-pass", role=UserRole.admin.value
+    )
+
+    response = client.delete(f"/api/users/{admin_id}", headers=admin_headers)
+
+    assert response.status_code == 409
+
+
+def test_upload_rejects_user_storage_quota_exceeded(client):
+    headers, user_id = auth_headers(client, "researcher@example.org", "secret-pass")
+
+    db = client.app.state.testing_session_local()
+    user = db.get(User, user_id)
+    user.storage_quota_bytes = 5
+    db.commit()
+    db.close()
+
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=headers,
+    )
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == "La subida supera la cuota de almacenamiento del usuario"
+    assert client.get("/api/studies", headers=headers).json() == []
+
+
+def test_admin_can_update_study_clinical_review_status(client):
+    researcher_headers, _ = auth_headers(
+        client, "researcher@example.org", "secret-pass"
+    )
+    admin_headers, _ = auth_headers(
+        client, "admin@example.org", "secret-pass", role=UserRole.admin.value
+    )
+    response = client.post(
+        "/api/studies/upload",
+        files={"file": ("study.nii", b"dummy image", "application/octet-stream")},
+        headers=researcher_headers,
+    )
+    study_id = response.json()["id"]
+    complete_study_with_pdf(client, study_id)
+
+    updated = client.patch(
+        f"/api/studies/{study_id}/clinical-review",
+        json={"clinical_review_status": "reviewed"},
+        headers=admin_headers,
+    )
+    invalid = client.patch(
+        f"/api/studies/{study_id}/clinical-review",
+        json={"clinical_review_status": "clinical_report"},
+        headers=admin_headers,
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["clinical_review_status"] == "reviewed"
+    assert invalid.status_code == 400
 
 
 def test_user_can_update_notification_preferences(client):
