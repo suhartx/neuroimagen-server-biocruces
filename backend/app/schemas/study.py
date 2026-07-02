@@ -26,6 +26,7 @@ class StudyRead(BaseModel):
     has_pdf: bool = False
     has_output_zip: bool = False
     processing_warnings: str | None = None
+    clinical_review_status: str = "technical_only"
 
     model_config = {"from_attributes": True}
 
@@ -37,6 +38,7 @@ class StudyStatusRead(BaseModel):
     has_pdf: bool
     has_output_zip: bool = False
     processing_warnings: str | None = None
+    clinical_review_status: str = "technical_only"
     updated_at: datetime
 
 
@@ -96,6 +98,10 @@ class StudyActionResponse(BaseModel):
     id: UUID
     status: str
     message: str
+
+
+class ClinicalReviewUpdate(BaseModel):
+    clinical_review_status: str
 
 
 class UploadResponse(BaseModel):

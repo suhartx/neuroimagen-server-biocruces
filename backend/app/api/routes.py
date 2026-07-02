@@ -30,7 +30,7 @@ from app.db.session import get_db
 from app.models.processing_job import ProcessingJob
 from app.models.notification import Notification
 from app.models.share_link import ShareLink
-from app.models.study import Study, StudyStatus
+from app.models.study import ClinicalReviewStatus, Study, StudyStatus
 from app.models.user import User, UserRole
 from app.schemas.admin import (
     AdminDashboardRead,
@@ -44,12 +44,15 @@ from app.schemas.auth import (
     LogoutResponse,
     NotificationPreferences,
     TokenResponse,
+    UserActionResponse,
     UserCreate,
     UserRead,
+    UserUpdate,
 )
 from app.schemas.notification import NotificationRead
 from app.schemas.study import (
     ProcessingJobRead,
+    ClinicalReviewUpdate,
     ShareLinkCreate,
     ShareLinkCreateResponse,
     ShareLinkRead,
@@ -268,8 +271,10 @@ def mark_notification_read(
 def list_users(
     _: User = Depends(require_admin), db: Session = Depends(get_db)
 ) -> list[UserRead]:
-    users = db.scalars(select(User).order_by(User.created_at.desc())).all()
-    return [UserRead.model_validate(user) for user in users]
+    users = db.scalars(
+        select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.desc())
+    ).all()
+    return [_user_read(db, user) for user in users]
 
 
 @router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
@@ -288,6 +293,7 @@ def create_user(
         hashed_password=hash_password(payload.password),
         role=payload.role,
         is_active=payload.is_active,
+        storage_quota_bytes=payload.storage_quota_bytes,
     )
     db.add(user)
     try:
@@ -306,7 +312,77 @@ def create_user(
             detail="Ya existe un usuario con ese correo electrónico",
         ) from None
     db.refresh(user)
-    return UserRead.model_validate(user)
+    return _user_read(db, user)
+
+
+@router.patch("/users/{user_id}", response_model=UserRead)
+def update_user(
+    user_id: UUID,
+    payload: UserUpdate,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> UserRead:
+    user = db.get(User, user_id)
+    if not user or user.deleted_at:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
+        )
+    if user.id == current_user.id and payload.is_active is False:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No puedes desactivar tu propio usuario administrador",
+        )
+    if "is_active" in payload.model_fields_set and payload.is_active is not None:
+        if user.role == UserRole.admin.value and payload.is_active is False:
+            _ensure_another_active_admin(db, user.id)
+        user.is_active = payload.is_active
+    if "storage_quota_bytes" in payload.model_fields_set:
+        user.storage_quota_bytes = payload.storage_quota_bytes
+    record_event(
+        db,
+        "user_updated",
+        actor=current_user.email,
+        actor_user_id=current_user.id,
+        details={
+            "user_id": str(user.id),
+            "is_active": user.is_active,
+            "storage_quota_bytes": user.storage_quota_bytes,
+        },
+    )
+    db.commit()
+    db.refresh(user)
+    return _user_read(db, user)
+
+
+@router.delete("/users/{user_id}", response_model=UserActionResponse)
+def delete_user(
+    user_id: UUID,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> UserActionResponse:
+    user = db.get(User, user_id)
+    if not user or user.deleted_at:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
+        )
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No puedes borrar tu propio usuario administrador",
+        )
+    if user.role == UserRole.admin.value:
+        _ensure_another_active_admin(db, user.id)
+    user.is_active = False
+    user.deleted_at = datetime.utcnow()
+    record_event(
+        db,
+        "user_deleted",
+        actor=current_user.email,
+        actor_user_id=current_user.id,
+        details={"user_id": str(user.id), "email": user.email},
+    )
+    db.commit()
+    return UserActionResponse(id=user.id, message="Usuario borrado")
 
 
 @router.post(
@@ -345,6 +421,14 @@ def upload_study(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="El fichero supera el tamaño máximo permitido",
         )
+    if current_user.storage_quota_bytes is not None:
+        used_bytes = _user_storage_used(db, current_user.id)
+        if used_bytes + file_size > current_user.storage_quota_bytes:
+            storage.remove_study(study_id)
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="La subida supera la cuota de almacenamiento del usuario",
+            )
 
     bids_paths = None
     if processor_backend == "compneuro" and resolved_bids_subject_id:
@@ -496,8 +580,51 @@ def get_study_status(
         has_pdf=bool(study.pdf_path),
         has_output_zip=bool(study.output_zip_path),
         processing_warnings=study.processing_warnings,
+        clinical_review_status=study.clinical_review_status,
         updated_at=study.updated_at,
     )
+
+
+@router.patch("/studies/{study_id}/clinical-review", response_model=StudyRead)
+def update_clinical_review_status(
+    request: Request,
+    study_id: UUID,
+    payload: ClinicalReviewUpdate,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> StudyRead:
+    study = db.get(Study, study_id)
+    if not study or study.deleted_at:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Estudio no encontrado"
+        )
+    allowed_statuses = {item.value for item in ClinicalReviewStatus}
+    if payload.clinical_review_status not in allowed_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Estado de revisión clínica no válido",
+        )
+    if (
+        payload.clinical_review_status != ClinicalReviewStatus.technical_only.value
+        and study.status != StudyStatus.completed
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Solo se pueden revisar o validar estudios completados",
+        )
+    study.clinical_review_status = payload.clinical_review_status
+    record_event(
+        db,
+        "study_clinical_review_updated",
+        study.id,
+        {"clinical_review_status": study.clinical_review_status},
+        actor=current_user.email,
+        actor_user_id=current_user.id,
+        ip_address=client_ip(request),
+    )
+    db.commit()
+    db.refresh(study)
+    return to_study_read(study)
 
 
 @router.get("/studies/{study_id}/download")
@@ -955,6 +1082,7 @@ def to_study_read(study: Study) -> StudyRead:
         has_pdf=bool(study.pdf_path),
         has_output_zip=bool(study.output_zip_path),
         processing_warnings=study.processing_warnings,
+        clinical_review_status=study.clinical_review_status,
     )
 
 
@@ -1032,10 +1160,13 @@ def _status_key(value) -> str:
 
 
 def _user_summary(db: Session) -> AdminUserSummary:
-    total = db.scalar(select(func.count()).select_from(User)) or 0
+    visible_users = User.deleted_at.is_(None)
+    total = db.scalar(select(func.count()).select_from(User).where(visible_users)) or 0
     active = (
         db.scalar(
-            select(func.count()).select_from(User).where(User.is_active.is_(True))
+            select(func.count())
+            .select_from(User)
+            .where(visible_users, User.is_active.is_(True))
         )
         or 0
     )
@@ -1043,7 +1174,7 @@ def _user_summary(db: Session) -> AdminUserSummary:
         db.scalar(
             select(func.count())
             .select_from(User)
-            .where(User.role == UserRole.admin.value)
+            .where(visible_users, User.role == UserRole.admin.value)
         )
         or 0
     )
@@ -1051,12 +1182,51 @@ def _user_summary(db: Session) -> AdminUserSummary:
         db.scalar(
             select(func.count())
             .select_from(User)
-            .where(User.role == UserRole.researcher.value)
+            .where(visible_users, User.role == UserRole.researcher.value)
         )
         or 0
     )
     return AdminUserSummary(
         total=total, active=active, admins=admins, researchers=researchers
+    )
+
+
+def _ensure_another_active_admin(db: Session, user_id: UUID) -> None:
+    active_admins = (
+        db.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(
+                User.id != user_id,
+                User.role == UserRole.admin.value,
+                User.is_active.is_(True),
+                User.deleted_at.is_(None),
+            )
+        )
+        or 0
+    )
+    if active_admins < 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Debe quedar al menos un administrador activo",
+        )
+
+
+def _user_storage_used(db: Session, user_id: UUID) -> int:
+    return int(
+        db.scalar(
+            select(func.coalesce(func.sum(Study.file_size), 0)).where(
+                Study.owner_user_id == user_id,
+                Study.deleted_at.is_(None),
+            )
+        )
+        or 0
+    )
+
+
+def _user_read(db: Session, user: User) -> UserRead:
+    return UserRead.model_validate(user).model_copy(
+        update={"storage_used_bytes": _user_storage_used(db, user.id)}
     )
 
 

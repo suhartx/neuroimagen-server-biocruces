@@ -113,7 +113,7 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
         ) from None
     user = db.get(User, user_uuid)
-    if not user or not user.is_active:
+    if not user or not user.is_active or user.deleted_at:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
         )
@@ -164,4 +164,6 @@ def _b64decode(raw: str) -> bytes:
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
-    return db.scalar(select(User).where(User.email == normalize_email(email)))
+    return db.scalar(
+        select(User).where(User.email == normalize_email(email), User.deleted_at.is_(None))
+    )

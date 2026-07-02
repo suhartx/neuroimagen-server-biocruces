@@ -83,7 +83,7 @@ input[type="file"] {
   padding: 12px;
 }
 
-input[type="text"], input[type="email"], input[type="password"], input[type="url"], select {
+input[type="text"], input[type="email"], input[type="password"], input[type="url"], input[type="number"], select {
   flex: 0 1 180px;
   border: 1px solid #c6d6df;
   border-radius: 12px;

@@ -20,6 +20,12 @@ class StudyStatus(str, enum.Enum):
     canceled = "canceled"
 
 
+class ClinicalReviewStatus(str, enum.Enum):
+    technical_only = "technical_only"
+    reviewed = "reviewed"
+    validated = "validated"
+
+
 class Study(Base):
     __tablename__ = "studies"
 
@@ -39,6 +45,9 @@ class Study(Base):
     preproc_output_path: Mapped[str | None] = mapped_column(Text)
     rendered_png_dir: Mapped[str | None] = mapped_column(Text)
     processing_warnings: Mapped[str | None] = mapped_column(Text)
+    clinical_review_status: Mapped[str] = mapped_column(
+        String(50), default=ClinicalReviewStatus.technical_only.value, nullable=False
+    )
     status: Mapped[StudyStatus] = mapped_column(
         Enum(StudyStatus), default=StudyStatus.uploaded, nullable=False
     )

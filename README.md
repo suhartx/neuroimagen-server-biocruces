@@ -71,7 +71,7 @@ Cuando se modifica el frontend y se usa el despliegue Docker/Nginx, ejecuta `mak
 
 1. El usuario inicia sesión con login local.
 2. El usuario sube un fichero desde la GUI.
-3. FastAPI valida permisos, extensión, sanitiza nombre y guarda el fichero en `data/studies/{study_id}/input`.
+3. FastAPI valida permisos, cuota de almacenamiento, extensión, sanitiza nombre y guarda el fichero en `data/studies/{study_id}/input`.
 4. Se crea un `Study` con propietario, un `ProcessingJob` y eventos de auditoría.
 5. FastAPI encola una tarea Celery en Redis.
 6. El worker ejecuta `processor_adapter`.
@@ -80,7 +80,8 @@ Cuando se modifica el frontend y se usa el despliegue Docker/Nginx, ejecuta `mak
 9. El procesador dummy genera un PDF de desarrollo o `compneuro-anatproc` genera `Preproc/BET` y `Preproc/ProbTissue`.
 10. El worker detecta resultados, renderiza NIfTI a PNG con FSL `slicer`, genera un PDF técnico y opcionalmente un ZIP.
 11. El worker registra notificaciones internas y, si SMTP está configurado, envía correos electrónicos sin adjuntos al completar o fallar.
-12. La GUI permite ver detalle/logs, cancelar jobs en cola o en procesamiento, reintentar fallidos, borrar estudios permitidos y descargar PDF/ZIP si el usuario tiene permiso.
+12. La GUI permite a investigadores ver detalle/logs, cancelar jobs en cola o en procesamiento, reintentar fallidos, borrar estudios permitidos y descargar PDF/ZIP si el usuario tiene permiso.
+13. El panel de administración gestiona usuarios, borrado lógico, cuotas de almacenamiento por usuario y marca los resultados como `technical_only`, `reviewed` o `validated` sin ejecutar pipelines desde el panel.
 
 ## Notificaciones
 
@@ -146,7 +147,7 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 ## Limitaciones Iniciales
 
 - Sin anonimización DICOM integrada.
-- Sin revisión clínica formal.
+- Sin revisión clínica formal; los resultados pueden marcarse como solo técnicos, revisados o validados para trazabilidad interna.
 - Sin retención automática de datos.
 - Sin subida múltiple ni lotes.
 - Sin MinIO/S3 en esta versión.
@@ -158,4 +159,4 @@ Cada carpeta de primer nivel incluye su propio `README.md` explicando para qué 
 
 El roadmap detallado está en `docs/roadmap.md` y organiza la evolución por fases. La **Fase 6 — Notificaciones** ya añade avisos internos y SMTP configurable sin adjuntos pesados.
 
-Quedan para fases posteriores: Google/OIDC, ORCID, múltiples subidas, retención automática, cuotas, flujos de procesamiento configurables e integración institucional.
+Quedan para fases posteriores: Google/OIDC, ORCID, múltiples subidas, retención automática, flujos de procesamiento configurables e integración institucional.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -11,6 +12,9 @@ class UserRead(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    deleted_at: datetime | None = None
+    storage_quota_bytes: int | None = None
+    storage_used_bytes: int = 0
     notify_on_processing_completed: bool
     notify_on_processing_failed: bool
 
@@ -34,6 +38,17 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, max_length=256)
     role: str = "researcher"
     is_active: bool = True
+    storage_quota_bytes: int | None = Field(default=None, ge=0)
+
+
+class UserUpdate(BaseModel):
+    is_active: bool | None = None
+    storage_quota_bytes: int | None = Field(default=None, ge=0)
+
+
+class UserActionResponse(BaseModel):
+    id: UUID
+    message: str
 
 
 class NotificationPreferences(BaseModel):

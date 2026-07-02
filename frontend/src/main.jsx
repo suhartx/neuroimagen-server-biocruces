@@ -22,7 +22,7 @@ function App() {
   const [shareStudy, setShareStudy] = useState(null);
   const [shareLinks, setShareLinks] = useState([]);
   const [generatedShareUrl, setGeneratedShareUrl] = useState('');
-  const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'researcher' });
+  const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'researcher', storage_quota_mb: '' });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -197,19 +197,57 @@ function App() {
     event.preventDefault();
     setLoading(true);
     setMessage('Creando usuario...');
+    const payload = {
+      email: newUser.email,
+      full_name: newUser.full_name,
+      password: newUser.password,
+      role: newUser.role,
+      storage_quota_bytes: quotaBytesFromMbInput(newUser.storage_quota_mb),
+    };
     const response = await authFetch(`${API_BASE}/users`, {
       method: 'POST',
       headers: { ...authHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify(newUser),
+      body: JSON.stringify(payload),
     });
-    const payload = await response.json().catch(() => ({}));
+    const responsePayload = await response.json().catch(() => ({}));
     setLoading(false);
     if (!response.ok) {
-      setMessage(payload.detail || 'No se pudo crear el usuario.');
+      setMessage(responsePayload.detail || 'No se pudo crear el usuario.');
       return;
     }
-    setNewUser({ email: '', full_name: '', password: '', role: 'researcher' });
-    setMessage(`Usuario creado: ${payload.email}`);
+    setNewUser({ email: '', full_name: '', password: '', role: 'researcher', storage_quota_mb: '' });
+    setMessage(`Usuario creado: ${responsePayload.email}`);
+    await loadUsers();
+    await loadAdminDashboard();
+  }
+
+  async function updateUserQuota(item) {
+    const currentValue = item.storage_quota_bytes == null ? '' : String(Math.round(item.storage_quota_bytes / 1024 / 1024));
+    const value = window.prompt('Cuota en MB. Deja vacío para sin límite.', currentValue);
+    if (value === null) return;
+    const response = await authFetch(`${API_BASE}/users/${item.id}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storage_quota_bytes: quotaBytesFromMbInput(value) }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo actualizar la cuota.');
+      return;
+    }
+    setUsers(users.map((userItem) => (userItem.id === payload.id ? payload : userItem)));
+    setMessage('Cuota de usuario actualizada.');
+  }
+
+  async function deleteUser(item) {
+    if (!window.confirm(`¿Seguro que quieres borrar lógicamente a ${item.email}? No podrá iniciar sesión.`)) return;
+    const response = await authFetch(`${API_BASE}/users/${item.id}`, { method: 'DELETE' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo borrar el usuario.');
+      return;
+    }
+    setMessage(payload.message || 'Usuario borrado.');
     await loadUsers();
     await loadAdminDashboard();
   }
@@ -362,6 +400,24 @@ function App() {
     await loadAdminDashboard();
   }
 
+  async function updateClinicalReview(study, clinicalReviewStatus) {
+    const response = await authFetch(`${API_BASE}/studies/${study.id}/clinical-review`, {
+      method: 'PATCH',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clinical_review_status: clinicalReviewStatus }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(payload.detail || 'No se pudo actualizar la revisión clínica.');
+      return;
+    }
+    setStudies(studies.map((item) => (item.id === payload.id ? payload : item)));
+    if (selectedDetail?.id === payload.id) {
+      setSelectedDetail({ ...selectedDetail, clinical_review_status: payload.clinical_review_status });
+    }
+    setMessage('Estado de revisión clínica actualizado.');
+  }
+
   return (
     <main className="page">
       <section className="hero">
@@ -382,6 +438,8 @@ function App() {
         )}
       </section>
 
+      {user && message && <section className="card message-card"><p className="message">{message}</p></section>}
+
       {!user ? (
         <section className="card auth-card">
           <h2>Login</h2>
@@ -395,6 +453,7 @@ function App() {
         </section>
       ) : (
         <>
+          {user.role !== 'admin' && (
           <section className="card">
             <h2>Subir estudio</h2>
             <p className="hint">
@@ -412,8 +471,8 @@ function App() {
               <button disabled={loading}>{loading ? 'Trabajando...' : 'Enviar a procesamiento'}</button>
             </form>
             <p className="hint">El procesamiento puede tardar entre 10 minutos y 1 hora.</p>
-            {message && <p className="message">{message}</p>}
           </section>
+          )}
 
           <section className="card notifications-card">
             <div className="section-title">
@@ -448,58 +507,21 @@ function App() {
             <section className="card admin-dashboard">
               <div className="section-title">
                 <div>
-                  <p className="eyebrow dark">Panel operativo</p>
+                  <p className="eyebrow dark">Panel administrativo</p>
                   <h2>Dashboard de administración</h2>
                 </div>
                 <button className="secondary" onClick={loadAdminDashboard}>Actualizar dashboard</button>
               </div>
 
               <div className="metric-grid">
-                <MetricCard label="En cola" value={adminDashboard.queue.queued} />
-                <MetricCard label="Procesando" value={adminDashboard.queue.processing} />
-                <MetricCard label="Capacidad" value={`${adminDashboard.queue.processing_capacity || 0} simultáneos`} />
-                <MetricCard label="Fallidos" value={adminDashboard.queue.failed} tone={adminDashboard.queue.failed ? 'danger' : ''} />
-                <MetricCard label="Workers activos" value={adminDashboard.queue.worker_replicas || 0} />
                 <MetricCard label="Usuarios activos" value={`${adminDashboard.users.active}/${adminDashboard.users.total}`} />
                 <MetricCard label="Estudios" value={sumValues(adminDashboard.studies_by_status)} />
                 <MetricCard label="Subidas registradas" value={formatBytes(adminDashboard.storage.studies_bytes)} />
+                <MetricCard label="Disco libre" value={formatBytes(adminDashboard.storage.disk_free_bytes)} />
               </div>
 
-              <p className="hint">
-                Disponibles ahora: {adminDashboard.queue.processing_available || 0}. Concurrencia interna por worker: {adminDashboard.queue.worker_concurrency || 0}.
-              </p>
-
-              <div className="dashboard-columns">
-                <div>
-                  <h3>Servicios</h3>
-                  <div className="service-list">
-                    {adminDashboard.services.map((service) => (
-                      <ServiceStatus key={service.name} service={service} />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3>Alertas básicas</h3>
-                  {adminDashboard.alerts.length === 0 ? (
-                    <p className="muted">Sin alertas operativas.</p>
-                  ) : (
-                    <ul className="alert-list">
-                      {adminDashboard.alerts.map((alert) => <li key={alert}>{alert}</li>)}
-                    </ul>
-                  )}
-                </div>
-              </div>
-
-              <div className="dashboard-columns">
-                <div>
-                  <h3>Estudios por estado</h3>
-                  <StatusBreakdown values={adminDashboard.studies_by_status} />
-                </div>
-                <div>
-                  <h3>Jobs por estado</h3>
-                  <StatusBreakdown values={adminDashboard.jobs_by_status} />
-                </div>
-              </div>
+              <h3>Estudios por estado</h3>
+              <StatusBreakdown values={adminDashboard.studies_by_status} />
 
               <p className="hint">
                 Última actualización: {formatDate(adminDashboard.generated_at)}. Disco libre: {formatBytes(adminDashboard.storage.disk_free_bytes)}.
@@ -520,6 +542,7 @@ function App() {
                     <th>Sujeto</th>
                     <th>Estado</th>
                     <th>Fecha</th>
+                    <th>Revisión</th>
                     <th>Resultados</th>
                     <th>Acciones</th>
                   </tr>
@@ -532,6 +555,17 @@ function App() {
                       <td><Status value={study.status} error={study.error_message} warnings={study.processing_warnings} /></td>
                       <td>{formatDate(study.created_at)}</td>
                       <td>
+                        {user.role === 'admin' ? (
+                          <select value={study.clinical_review_status || 'technical_only'} onChange={(event) => updateClinicalReview(study, event.target.value)}>
+                            <option value="technical_only">Solo técnico</option>
+                            <option value="reviewed">Revisado</option>
+                            <option value="validated">Validado</option>
+                          </select>
+                        ) : (
+                          clinicalReviewLabel(study.clinical_review_status)
+                        )}
+                      </td>
+                      <td>
                         {study.has_pdf ? (
                           <button className="download" onClick={() => downloadArtifact(study, 'pdf')}>PDF</button>
                         ) : (
@@ -543,16 +577,16 @@ function App() {
                         <button className="secondary compact" onClick={() => loadStudyDetail(study)}>Detalle</button>
                         <button className="secondary compact" onClick={() => loadStudyLogs(study)}>Logs</button>
                         {study.has_pdf && study.status === 'completed' && <button className="secondary compact" onClick={() => openSharePanel(study)}>Compartir</button>}
-                        {['queued', 'processing'].includes(study.status) && (
+                        {user.role !== 'admin' && ['queued', 'processing'].includes(study.status) && (
                           <button className="secondary compact" onClick={() => runStudyAction(study, 'cancel')}>Cancelar</button>
                         )}
-                        {study.status === 'failed' && <button className="secondary compact" onClick={() => runStudyAction(study, 'retry')}>Reintentar</button>}
+                        {user.role !== 'admin' && study.status === 'failed' && <button className="secondary compact" onClick={() => runStudyAction(study, 'retry')}>Reintentar</button>}
                         {!['queued', 'processing'].includes(study.status) && <button className="danger compact" onClick={() => runStudyAction(study, 'delete')}>Borrar</button>}
                       </td>
                     </tr>
                   ))}
                   {studies.length === 0 && (
-                    <tr><td colSpan="6" className="muted">Todavía no hay estudios registrados.</td></tr>
+                    <tr><td colSpan="7" className="muted">Todavía no hay estudios registrados.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -570,9 +604,12 @@ function App() {
                 <dt>Fichero</dt><dd>{selectedDetail.original_filename}</dd>
                 <dt>Estado</dt><dd><Status value={selectedDetail.status} error={selectedDetail.error_message} warnings={selectedDetail.processing_warnings} /></dd>
                 <dt>Sujeto</dt><dd>{selectedDetail.bids_subject_id || 'No aplica'}</dd>
-                <dt>Pipeline</dt><dd>{selectedDetail.processor_backend || 'No informado'}</dd>
+                <dt>Revisión</dt><dd>{clinicalReviewLabel(selectedDetail.clinical_review_status)}</dd>
+                {user.role !== 'admin' && <><dt>Pipeline</dt><dd>{selectedDetail.processor_backend || 'No informado'}</dd></>}
                 <dt>Checksum</dt><dd>{selectedDetail.checksum || 'No informado'}</dd>
               </dl>
+              {user.role !== 'admin' && (
+              <>
               <h3>Jobs</h3>
               <div className="table-wrap small-table">
                 <table>
@@ -600,6 +637,8 @@ function App() {
                   </tbody>
                 </table>
               </div>
+              </>
+              )}
             </section>
           )}
 
@@ -687,6 +726,7 @@ function App() {
                   <option value="researcher">researcher</option>
                   <option value="admin">admin</option>
                 </select>
+                <input type="number" min="0" value={newUser.storage_quota_mb} onChange={(event) => setNewUser({ ...newUser, storage_quota_mb: event.target.value })} placeholder="Cuota MB" aria-label="Cuota de almacenamiento en MB" />
                 <button disabled={loading}>Crear usuario</button>
               </form>
               <div className="table-wrap small-table">
@@ -697,6 +737,8 @@ function App() {
                       <th>Nombre</th>
                       <th>Rol</th>
                       <th>Activo</th>
+                      <th>Almacenamiento</th>
+                      <th>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -706,6 +748,15 @@ function App() {
                         <td>{item.full_name}</td>
                         <td>{item.role}</td>
                         <td>{item.is_active ? 'Sí' : 'No'}</td>
+                        <td>{formatBytes(item.storage_used_bytes)} / {formatQuota(item.storage_quota_bytes)}</td>
+                        <td className="actions-cell">
+                          <button className="secondary compact" onClick={() => updateUserQuota(item)}>Cuota</button>
+                          {item.id !== user.id ? (
+                            <button className="danger compact" onClick={() => deleteUser(item)}>Borrar</button>
+                          ) : (
+                            <span className="muted">Usuario actual</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -768,19 +819,6 @@ function MetricCard({ label, value, tone = '' }) {
   );
 }
 
-function ServiceStatus({ service }) {
-  const label = service.status === 'ok' ? 'Operativo' : service.status === 'warning' ? 'Aviso' : service.status === 'unknown' ? 'No verificable' : 'Caído';
-  return (
-    <div className="service-item">
-      <span className={`service-dot ${service.status}`} />
-      <div>
-        <strong>{service.name}</strong>
-        <p>{label}{service.detail ? `: ${service.detail}` : ''}</p>
-      </div>
-    </div>
-  );
-}
-
 function StatusBreakdown({ values }) {
   const entries = Object.entries(values || {});
   if (entries.length === 0) return <p className="muted">Sin datos todavía.</p>;
@@ -810,6 +848,26 @@ function formatBytes(bytes) {
     unitIndex += 1;
   }
   return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function formatQuota(bytes) {
+  return bytes == null ? 'Sin límite' : formatBytes(bytes);
+}
+
+function quotaBytesFromMbInput(value) {
+  if (value === '' || value == null) return null;
+  const megabytes = Number(value);
+  if (!Number.isFinite(megabytes) || megabytes < 0) return null;
+  return Math.round(megabytes * 1024 * 1024);
+}
+
+function clinicalReviewLabel(value) {
+  const labels = {
+    technical_only: 'Solo técnico',
+    reviewed: 'Revisado',
+    validated: 'Validado',
+  };
+  return labels[value] || 'Solo técnico';
 }
 
 function formatDate(value) {

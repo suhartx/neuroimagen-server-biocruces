@@ -78,6 +78,8 @@ erDiagram
     text hashed_password
     string role
     bool is_active
+    datetime deleted_at
+    bigint storage_quota_bytes
     bool notify_on_processing_completed
     bool notify_on_processing_failed
     datetime created_at
@@ -99,6 +101,7 @@ erDiagram
     text preproc_output_path
     text rendered_png_dir
     text processing_warnings
+    string clinical_review_status
     enum status
     datetime created_at
     datetime updated_at
@@ -167,8 +170,9 @@ La API aplica autenticación y autorización antes de operar sobre estudios. El 
 
 Reglas implementadas:
 
-- `admin` puede ver todos los estudios y crear usuarios.
-- `admin` puede consultar el dashboard operativo global con cola, jobs, uso de disco, healthchecks, usuarios y estudios por estado.
+- `admin` puede ver todos los estudios, crear usuarios, borrar usuarios lógicamente y definir cuotas de almacenamiento por usuario.
+- `admin` puede consultar un dashboard administrativo centrado en usuarios, estudios y almacenamiento; el panel no expone acciones para ejecutar pipelines.
+- `admin` puede marcar salidas como `technical_only`, `reviewed` o `validated`. El valor inicial es `technical_only` porque el PDF no es un informe clínico.
 - `researcher` puede subir estudios, ver historial propio y descargar resultados propios.
 - `admin` y propietario pueden crear/revocar enlaces temporales para compartir solo el PDF técnico de estudios completados.
 - Los receptores externos descargan por token opaco sin cuenta, sin acceso a ZIP, logs, detalle ni enumeración de estudios.
@@ -198,7 +202,7 @@ stateDiagram-v2
   failed --> [*]
 ```
 
-Estados futuros documentados: `review_pending`, `reviewed`, `rejected`, `archived`.
+La revisión clínica no cambia el estado de procesamiento: se registra aparte con `technical_only`, `reviewed` o `validated` para no presentar el PDF técnico como informe clínico.
 
 La cancelación implementada usa el estado `canceled` para trabajos en cola y en procesamiento. En cola se revoca la tarea pendiente; durante procesamiento la API pide a Celery terminar la tarea y el adaptador ejecuta el procesador externo en un grupo de procesos propio para propagar la señal a scripts/hijos de FSL o `compneuro`.
 
