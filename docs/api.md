@@ -8,16 +8,23 @@ Swagger está disponible en `/api/docs`.
 - `POST /api/auth/login`: login local con correo electrónico y contraseña.
 - `POST /api/auth/logout`: registrar cierre de sesión cliente.
 - `GET /api/auth/me`: usuario autenticado actual.
+- `GET /api/me/notification-preferences`: preferencias de correo del usuario autenticado.
+- `PATCH /api/me/notification-preferences`: actualizar preferencias de correo del usuario autenticado.
+- `GET /api/notifications`: listar notificaciones internas del usuario autenticado.
+- `POST /api/notifications/{notification_id}/read`: marcar una notificación propia como leída.
 - `GET /api/admin/dashboard`: resumen operativo global. Solo admin.
 - `GET /api/users`: listar usuarios. Solo admin.
 - `POST /api/users`: crear usuario. Solo admin.
+- `PATCH /api/users/{user_id}`: actualizar estado activo o cuota de almacenamiento. Solo admin.
+- `DELETE /api/users/{user_id}`: borrar lógicamente un usuario. Solo admin.
 - `POST /api/studies/upload`: subir fichero y encolar procesamiento. Requiere autenticación.
 - `GET /api/studies`: listar estudios visibles. Admin ve todos; researcher solo los propios.
 - `GET /api/studies/{study_id}`: detalle si el usuario tiene permiso.
 - `GET /api/studies/{study_id}/detail`: detalle extendido con jobs asociados.
 - `GET /api/studies/{study_id}/status`: estado si el usuario tiene permiso.
+- `PATCH /api/studies/{study_id}/clinical-review`: marcar el resultado técnico como `technical_only`, `reviewed` o `validated`.
 - `GET /api/studies/{study_id}/logs`: logs técnicos truncados si el usuario tiene permiso.
-- `POST /api/studies/{study_id}/cancel`: cancelar job en cola.
+- `POST /api/studies/{study_id}/cancel`: cancelar job en cola o solicitar terminación de un procesamiento en ejecución.
 - `POST /api/studies/{study_id}/retry`: reintentar estudio fallido.
 - `DELETE /api/studies/{study_id}`: soft delete en DB y borrado físico de ficheros si el estudio no está procesando.
 - `GET /api/studies/{study_id}/download`: descargar PDF técnico si está completado. Alias compatible.
@@ -61,8 +68,8 @@ Respuesta:
 
 Roles iniciales:
 
-- `admin`: ve todos los estudios, crea usuarios y accede al dashboard operativo.
-- `researcher`: sube estudios, lista y descarga solo los propios.
+- `admin`: ve todos los estudios, gestiona usuarios/cuotas, accede al dashboard operativo y puede marcar revisión técnica.
+- `researcher`: sube estudios, consulta cuota, lista y descarga solo los propios y puede marcar revisión técnica de sus estudios.
 
 ## Dashboard Admin
 
@@ -89,13 +96,15 @@ Con `PROCESSOR_BACKEND=compneuro`, el fichero debe ser `.nii.gz` y la API prepar
 
 Cada estudio queda asociado al usuario autenticado mediante `owner_user_id`.
 
+Si el usuario tiene `storage_quota_bytes` definido, la API rechaza la subida cuando el tamaño del nuevo fichero supera su cuota disponible.
+
 ## Gestión De Jobs
 
 `GET /api/studies/{study_id}/detail` devuelve los metadatos del estudio y la lista de `ProcessingJob` asociados.
 
 `GET /api/studies/{study_id}/logs?lines=200` devuelve, si existen, `processor.log` y `rendering.log` truncados a las últimas líneas solicitadas. El máximo permitido es 1000 líneas.
 
-`POST /api/studies/{study_id}/cancel` solo funciona si el estudio está en estado `queued`. No cancela procesos ya iniciados.
+`POST /api/studies/{study_id}/cancel` funciona si el estudio está en estado `queued` o `processing`. En cola revoca la tarea pendiente y marca el estudio como `canceled`; durante procesamiento registra la solicitud, revoca la tarea Celery con `SIGTERM` y el worker/adaptador intentan propagar la cancelación al proceso externo. La respuesta inmediata puede seguir mostrando `processing` hasta que el worker cierre la tarea.
 
 `POST /api/studies/{study_id}/retry` solo funciona si el estudio está en estado `failed`. Crea un nuevo `ProcessingJob` y reencola el procesamiento.
 

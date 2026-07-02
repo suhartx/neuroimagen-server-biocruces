@@ -10,6 +10,8 @@ Esta carpeta contiene el proceso asíncrono Celery. Su trabajo es ejecutar proce
 - Renderizar resultados NIfTI a PNG con FSL `slicer` cuando el backend es `compneuro`.
 - Guardar ruta de PDF, ZIP, PNG y logs técnicos.
 - Marcar fallos de forma controlada.
+- Responder a cancelaciones de tareas en ejecución y propagar la señal al procesador externo.
+- Registrar notificaciones internas y enviar correos opcionales al cerrar un procesamiento.
 
 ## Estructura Del Código
 
@@ -27,7 +29,8 @@ Esta carpeta contiene el proceso asíncrono Celery. Su trabajo es ejecutar proce
 6. Para `compneuro`, busca NIfTI en `output/Preproc`, genera PNG, PDF técnico y ZIP si están habilitados.
 7. Si hay PDF, marca `completed` y guarda `pdf_path`.
 8. Si falla, marca `failed` y guarda un mensaje técnico resumido.
-9. Registra eventos de auditoría.
+9. Si recibe una cancelación, marca `canceled` y conserva la trazabilidad del intento.
+10. Registra eventos de auditoría y notificaciones de cierre.
 
 ## Límite Crítico
 

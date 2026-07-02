@@ -4,9 +4,9 @@ Este roadmap ordena la evolución funcional de la plataforma desde el estado act
 
 ## Estado Del Proyecto
 
-La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos, descarga de resultados según permisos, gestión básica de jobs, dashboard operativo para admin, backup/restore local por CLI, compartición temporal de PDF técnicos y notificaciones internas/correo electrónico.
+La plataforma actual permite login local, roles básicos `admin`/`researcher`, propietario por estudio, subida de un T1w `.nii.gz`, preparación BIDS, encolado con Celery/Redis, worker `compneuro`, renderizado NIfTI a PNG con FSL `slicer`, artefactos técnicos, descarga de resultados según permisos, gestión básica de jobs, dashboard operativo para admin, backup/restore local por CLI, compartición temporal de PDF técnicos, notificaciones internas/correo electrónico y cuotas básicas por usuario.
 
-Todavía no existen retención automática, cuotas, flujos seleccionables desde GUI ni revisión clínica formal.
+Todavía no existen retención automática, flujos seleccionables desde GUI ni revisión clínica formal con revisor, fecha y comentarios.
 
 ## Roadmap de evolución funcional
 
@@ -86,17 +86,12 @@ Alcance implementado:
 - Estados de job más detallados, sin porcentajes falsos.
 - Logs visibles en GUI con truncado.
 - Logs finales descargables o visibles de forma segura.
-- Cancelación de jobs en cola.
+- Cancelación de jobs en cola y solicitud de cancelación de procesamientos en ejecución.
 - Retry de jobs fallidos.
 - Soft delete en base de datos.
 - Borrado físico controlado de input, BIDS, output, PNG, PDF, ZIP y logs.
 - Auditoría ampliada.
 - Vista detalle de job.
-
-Fuera de esta fase:
-
-- Cancelación de jobs en ejecución.
-- Terminación forzada de procesos FSL o `compneuro`.
 
 Riesgos:
 
@@ -108,7 +103,7 @@ Criterios de aceptación:
 
 - El usuario propietario y el admin pueden ver detalle de job según permisos.
 - Los logs se muestran truncados y sin rutas internas innecesarias.
-- Los jobs en cola pueden cancelarse antes de entrar en ejecución.
+- Los jobs en cola pueden cancelarse antes de entrar en ejecución y los jobs en procesamiento pueden recibir una solicitud de terminación trazable.
 - El borrado conserva auditoría mínima.
 - El retry de un job fallido deja trazabilidad del intento anterior.
 
@@ -260,6 +255,8 @@ Criterios de aceptación:
 
 Objetivo: controlar crecimiento de datos y costes operativos.
 
+Estado: cuota básica por usuario implementada; retención automática, `keep_forever`, dry-run y limpieza avanzada quedan pendientes.
+
 Alcance recomendado:
 
 - Política de retención automática.
@@ -267,7 +264,7 @@ Alcance recomendado:
 - Flag `keep_forever`.
 - Dry-run.
 - Auditoría de borrado.
-- Cuota por usuario.
+- Evolución de cuota por usuario ya implementada como límite básico de subida.
 - Alerta de uso de disco.
 - Limpieza manual controlada.
 
@@ -376,7 +373,7 @@ La próxima fase óptima es **Fase 7 — Subida Múltiple Y Lotes**.
 Justificación:
 
 - La Fase 1 ya establece identidad, roles, propietario por estudio e historial básico.
-- La Fase 2 ya añade detalle de trabajo, logs truncados, cancelación de trabajos en cola, reintento y borrado seguro.
+- La Fase 2 ya añade detalle de trabajo, logs truncados, cancelación de trabajos en cola o en ejecución, reintento y borrado seguro.
 - La Fase 3 ya aporta visibilidad operativa global para admin.
 - Backup y restore local ya están cubiertos como operación CLI antes de avanzar a lotes, retención o integración institucional.
 - La Fase 5 ya permite compartir PDF técnicos con enlaces temporales, revocables y auditados.
@@ -394,7 +391,7 @@ Orden óptimo de implementación tras cerrar este roadmap:
 Las fases 1, 2, 3, 4, 5 y 6 ya están implementadas como base funcional y operativa:
 
 - Fase 1: login local, roles `admin`/`researcher`, propietario por estudio, creación de usuarios por admin y permisos por endpoint.
-- Fase 2: detalle de trabajos, logs truncados, cancelación de trabajos en cola, reintento de fallidos, soft delete, borrado físico controlado y auditoría mínima.
+- Fase 2: detalle de trabajos, logs truncados, cancelación de trabajos en cola o en ejecución, reintento de fallidos, soft delete, borrado físico controlado y auditoría mínima.
 - Fase 3: dashboard admin con cola, trabajos activos/fallidos, uso de disco, healthchecks, usuarios, estudios por estado y alertas no bloqueantes.
 - Fase 4: backup/restore local por CLI de PostgreSQL y `data/studies`, con confirmación fuerte para restore y smoke test posterior.
 - Fase 5: enlaces temporales y revocables para descargar PDF técnicos sin cuenta completa, con hash de token y auditoría de accesos.
@@ -412,9 +409,8 @@ Los detalles técnicos vivos están en `docs/architecture.md`, `docs/api.md`, `d
 - Retención automática.
 - Subida múltiple.
 - Pipeline manager avanzado.
-- Cancelación de trabajos en ejecución.
 - 2FA.
-- Cuotas.
+- Retención avanzada con `keep_forever`, dry-run y limpieza automática.
 - Anonimización DICOM real.
 
 ## Decisiones Pendientes

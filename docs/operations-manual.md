@@ -66,7 +66,7 @@ La GUI muestra un dashboard operativo solo para `admin` con:
 
 Si Redis o Worker aparecen en `warning` o `down`, revisar `docker compose ps` y `make logs` antes de relanzar trabajos.
 
-En la GUI, `Cancelar` y `Borrar` son acciones distintas. Un estudio en cola debe cancelarse primero para conservar trazabilidad del intento; el borrado elimina después el estudio y sus ficheros. Por eso la acción `Borrar` no se muestra mientras el estudio está `queued` o `processing`.
+En la GUI, cuando están disponibles, `Cancelar` y `Borrar` son acciones distintas. Un estudio en cola o en procesamiento debe cancelarse primero para conservar trazabilidad del intento; el borrado elimina después el estudio y sus ficheros. Por eso la acción `Borrar` no se muestra mientras el estudio está `queued` o `processing`. El panel admin no expone cancelación ni retry para no ejecutar pipelines desde administración.
 
 Para `compneuro`, no aumentes `MAX_CONCURRENT_PROCESSING_JOBS` por encima de `1`. Si necesitás más paralelismo, usá más réplicas con `WORKER_REPLICAS=2` en `.env` o `make up WORKER_REPLICAS=2`. El dashboard admin muestra workers activos, capacidad total y slots disponibles.
 
@@ -85,7 +85,7 @@ Retención futura recomendada:
 - Flag `keep_forever` para excluir estudios concretos.
 - Modo dry-run antes de borrar físicamente.
 - Auditoría de cada borrado automático o manual.
-- Alerta de uso de disco en dashboard admin antes de implementar cuotas completas.
+- Alerta de uso de disco en dashboard admin antes de implementar retención automática y políticas avanzadas de almacenamiento.
 
 El borrado recomendado combina soft delete en base de datos con borrado físico controlado de input, BIDS, output, PNG, PDF, ZIP y logs, conservando una auditoría mínima.
 
@@ -111,8 +111,7 @@ Si se reejecuta manualmente fuera de la GUI, conservar resultados previos en una
 
 ## Operación Futura De Jobs
 
-- La cancelación actual está limitada a jobs en cola.
-- La cancelación de jobs en ejecución queda para fase posterior porque requiere gestionar procesos FSL y `compneuro` con cuidado.
+- La cancelación actual cubre jobs en cola y procesamientos en ejecución. En ejecución, la API solicita terminación de la tarea Celery con `SIGTERM` y el worker/adaptador intentan terminar el grupo de procesos del comando externo.
 - El retry de jobs fallidos crea un nuevo `ProcessingJob` y conserva trazabilidad del intento previo.
 - Los logs visibles en GUI se devuelven truncados desde `processor.log` y `rendering.log`.
 - El borrado aplica soft delete en DB y borrado físico de la carpeta del estudio; conserva auditoría mínima.

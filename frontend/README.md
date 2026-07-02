@@ -10,14 +10,17 @@ Esta carpeta contiene la GUI web sencilla en castellano. Está implementada con 
 - Mostrar estados de procesamiento.
 - Permitir descargar PDF/ZIP cuando estén disponibles y el usuario tenga permiso.
 - Mostrar detalle de jobs y logs truncados.
-- Permitir cancelar jobs en cola, reintentar fallidos y borrar estudios permitidos.
-- Permitir gestión básica de usuarios para admin.
+- Permitir a researchers cancelar jobs en cola o en procesamiento y reintentar fallidos; permitir borrar estudios permitidos que no están en ejecución.
+- Permitir gestión básica de usuarios, estado activo y cuotas para admin.
 - Mostrar dashboard operativo para admin.
+- Mostrar notificaciones internas y preferencias de correo.
+- Permitir compartir PDF técnicos mediante enlaces temporales y revocables.
+- Permitir marcar resultados como `Solo técnico`, `Revisado` o `Validado` para trazabilidad interna.
 - Mostrar advertencias de uso responsable del PDF técnico.
 
 ## Estructura Del Código
 
-- `src/main.jsx`: contiene la aplicación React principal. Gestiona login, token, subida del fichero, consulta periódica de estudios, dashboard admin, descarga autenticada y usuarios admin.
+- `src/main.jsx`: contiene la aplicación React principal. Gestiona login, token, subida del fichero, consulta periódica de estudios, dashboard admin, descarga autenticada, usuarios admin, notificaciones, enlaces compartidos y revisión técnica.
 - `src/styles.css`: define el estilo visual de la interfaz.
 - `index.html`: punto de entrada HTML de Vite.
 - `package.json`: scripts y dependencias frontend.
@@ -46,7 +49,9 @@ npm run lint
 7. Si el usuario es `admin`, consulta `/api/admin/dashboard` y lo refresca periódicamente.
 8. La tabla permite ver detalle/logs y ejecutar acciones según estado del estudio.
 9. Si `has_pdf` o `has_output_zip` es verdadero, descarga con `fetch` autenticado.
+10. Si el estudio completado tiene PDF, permite crear/revocar enlaces temporales de descarga.
+11. La UI muestra notificaciones internas y permite activar/desactivar correos de cierre.
 
 ## Criterio De Diseño
 
-La interfaz es deliberadamente simple. Incluye login local, historial por usuario, gestión básica de jobs, dashboard operativo y creación básica de usuarios admin. No incluye sharing, notificaciones, revisión médica ni flujos hospitalarios futuros.
+La interfaz es deliberadamente simple. Incluye login local, historial por usuario, gestión básica de jobs, dashboard operativo, usuarios/cuotas admin, sharing de PDF, notificaciones y una marca de revisión técnica. No incluye revisión clínica formal, lotes, retención automática ni flujos hospitalarios futuros.
